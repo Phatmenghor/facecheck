@@ -1,0 +1,64 @@
+# ==============================================================================
+# CP Bank - FaceCheck API Strict Air-Gapped Git Protection
+# NEVER PUSH OR PUBLISH TO EXTERNAL OR PUBLIC CLOUD REPOSITORIES
+# ==============================================================================
+
+# 1. Bank Secrets, Master Keys & Credentials
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+master.key
+storage/master.key
+.env
+.env.*
+*.secret
+
+# 2. Banking Audit Logs & Observability
+logs/
+*.log
+*.log.*
+
+# 3. Model Weights & Binary Checkpoints
+*.safetensors
+*.onnx
+*.bin
+*.pt
+*.pth
+models/deepfake_detector/*.safetensors
+models/face_detection_yunet_*.onnx
+
+# 4. Bank Customer Data & Evaluation Datasets
+eval/data/
+storage/encrypted_images/
+eval/reports/
+*.jpg
+*.jpeg
+*.png
+*.webp
+
+# 5. Python Artifacts & Environment
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+.venv/
+env/
+.env/
+wheelhouse/
+
+# 6. IDE & System Files
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.swp
+*~
+Thumbs.db
+[Dd]esktop.ini

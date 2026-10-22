@@ -1,0 +1,64 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "FaceCheck: Master All-In-One Pipeline (run_all.py)",
+      "type": "shell",
+      "command": "py run_all.py",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FaceCheck: Start API Server",
+      "type": "shell",
+      "command": "py run.py",
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "FaceCheck: Run Full Test Suite (pytest)",
+      "type": "shell",
+      "command": "py -m pytest -v",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FaceCheck: Run End-to-End Test (full_test_images.py)",
+      "type": "shell",
+      "command": "py scripts/full_test_images.py",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FaceCheck: Train Face Classifier (train_classifier.py)",
+      "type": "shell",
+      "command": "py scripts/train_classifier.py",
+      "problemMatcher": []
+    },
+    {
+      "label": "FaceCheck: Verify Model Checksums",
+      "type": "shell",
+      "command": "py scripts/verify_checksums.py",
+      "problemMatcher": []
+    },
+    {
+      "label": "FaceCheck: Verify Audit Log Chain",
+      "type": "shell",
+      "command": "py scripts/verify_audit_log.py",
+      "problemMatcher": []
+    }
+  ]
+}

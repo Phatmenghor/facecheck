@@ -1,0 +1,74 @@
+### ==============================================================================
+### FaceCheck API - VS Code Interactive HTTP Test Suite
+### Compatible with VS Code "REST Client" extension or curl
+### ==============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+@apiKey = fc-prod-secret-key-bank-core-9872
+
+### 1. Health & Offline Guarantee Check
+GET {{baseUrl}}/api/v1/health
+Accept: application/json
+
+### 2. Prometheus Observability Metrics
+GET {{baseUrl}}/api/v1/metrics
+X-API-Key: {{apiKey}}
+
+### 3. Check Image Verification (Authentic Real Face Photo)
+POST {{baseUrl}}/api/v1/check
+X-API-Key: {{apiKey}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryFaceCheck
+
+------WebKitFormBoundaryFaceCheck
+Content-Disposition: form-data; name="image"; filename="portrait_01.jpg"
+Content-Type: image/jpeg
+
+< ./eval/data/real/portrait_01.jpg
+------WebKitFormBoundaryFaceCheck--
+
+### 4. Check Image Verification (Synthetic 3D Cartoon AI Face)
+POST {{baseUrl}}/api/v1/check
+X-API-Key: {{apiKey}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryFaceCheck
+
+------WebKitFormBoundaryFaceCheck
+Content-Disposition: form-data; name="file"; filename="cartoon_01.jpg"
+Content-Type: image/jpeg
+
+< ./eval/data/fake/3d_cartoons/cartoon_01.jpg
+------WebKitFormBoundaryFaceCheck--
+
+### 5. Check Image Verification (AI Diffusion Generation)
+POST {{baseUrl}}/api/v1/check
+X-API-Key: {{apiKey}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryFaceCheck
+
+------WebKitFormBoundaryFaceCheck
+Content-Disposition: form-data; name="file"; filename="midjourney_v6_portrait.png"
+Content-Type: image/png
+
+< ./eval/data/fake/diffusion_ai/midjourney_v6_portrait.png
+------WebKitFormBoundaryFaceCheck--
+
+### 6. Check Image Verification (Landscape / No Human Face)
+POST {{baseUrl}}/api/v1/check
+X-API-Key: {{apiKey}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryFaceCheck
+
+------WebKitFormBoundaryFaceCheck
+Content-Disposition: form-data; name="file"; filename="mountain_billboard.jpg"
+Content-Type: image/jpeg
+
+< ./eval/data/non_face/landscapes/mountain_billboard.jpg
+------WebKitFormBoundaryFaceCheck--
+
+### 7. Unauthorized Test (Missing X-API-Key -> 401 Unauthorized)
+POST {{baseUrl}}/api/v1/check
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryFaceCheck
+
+------WebKitFormBoundaryFaceCheck
+Content-Disposition: form-data; name="file"; filename="test.jpg"
+Content-Type: image/jpeg
+
+< ./eval/data/real/portrait_01.jpg
+------WebKitFormBoundaryFaceCheck--

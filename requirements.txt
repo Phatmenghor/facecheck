@@ -1,0 +1,22 @@
+# FaceCheck API - Pinned Offline Dependencies
+# Commercial-friendly licenses: MIT, Apache-2.0, BSD
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+pyyaml==6.0.2
+python-multipart==0.0.20
+cryptography==44.0.0
+pillow==11.1.0
+exifread==3.0.0
+imagehash==4.3.1
+numpy==1.26.4
+opencv-python-headless==4.10.0.84
+torch==2.5.1
+transformers==4.47.1
+safetensors==0.5.1
+onnxruntime==1.20.1
+pytest==8.3.4
+pytest-asyncio==0.25.0
+httpx==0.28.1

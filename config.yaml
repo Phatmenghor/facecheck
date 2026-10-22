@@ -1,0 +1,95 @@
+server:
+  host: "0.0.0.0"
+  port: 8000
+  environment: "production"
+  offline_mode: false
+  enable_docs_offline: true
+
+security:
+  api_keys:
+    - name: "bank_core_service"
+      key: "fc-prod-secret-key-bank-core-9872"
+    - name: "ad_verification_service"
+      key: "fc-prod-secret-key-ad-verify-5431"
+  rate_limit_per_minute: 120
+
+storage:
+  max_upload_size_mb: 10
+  allowed_extensions:
+    - "jpg"
+    - "jpeg"
+    - "png"
+    - "webp"
+  save_encrypted_images: false
+  encrypted_dir: "storage/encrypted_images"
+  encryption_key_env: "FACECHECK_ENCRYPTION_KEY"
+  encryption_key_file: "storage/master.key"
+
+audit:
+  log_file: "logs/audit.log"
+  enabled: true
+  use_hash_chain: true
+  syslog:
+    enabled: false
+    host: "127.0.0.1"
+    port: 514
+    protocol: "udp"
+
+face_check:
+  enabled: true
+  min_face_size: 32
+  max_yaw_degrees: 35.0
+  max_pitch_degrees: 25.0
+  max_roll_degrees: 25.0
+  boundary_margin_px: 5
+
+face_detection:
+  model_path: "models/face_detection_yunet_2023mar.onnx"
+  score_threshold: 0.6
+  nms_threshold: 0.3
+  top_k: 50
+  crop_margin_ratio: 0.25
+
+ai_detector:
+  active_detector: "huggingface" # "huggingface", "onnx", "mock"
+  model_dir: "models/deepfake_detector"
+  onnx_model_path: "models/deepfake_detector.onnx"
+  device: "cpu"
+  strict_local_files_only: false
+  allow_fallback_to_mock: true
+
+fusion:
+  weights:
+    metadata: 0.25
+    detector_face: 0.50
+    detector_full_image: 0.25
+  thresholds:
+    likely_real_max: 30
+    uncertain_max: 70
+
+quality:
+  min_width: 128
+  min_height: 128
+  min_face_size: 32
+  blur_threshold: 50.0
+  dark_luminance_threshold: 25.0
+  bright_luminance_threshold: 235.0
+  heavy_compression_ratio: 0.012
+
+hardening:
+  max_image_pixels: 25000000
+  max_dimension: 8192
+  sandbox_timeout_seconds: 15.0
+  reject_polyglots: true
+  reject_trailing_data: true
+
+eval:
+  data_dir: "eval/data"
+  reports_dir: "eval/reports"
+  min_acceptable:
+    max_false_positive_rate: 0.05
+    max_false_negative_rate: 0.05
+    min_accuracy: 0.90
+
+monitoring:
+  metrics_enabled: true

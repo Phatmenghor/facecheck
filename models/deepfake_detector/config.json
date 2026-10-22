@@ -1,0 +1,33 @@
+{
+  "model_type": "bank_face_safetensors_classifier",
+  "architecture": "Forensic_Linear_Probe",
+  "feature_dim": 6,
+  "feature_names": [
+    "edge_noise_ratio",
+    "mean_noise",
+    "smooth_noise_std",
+    "color_richness",
+    "hf_energy",
+    "skin_ratio"
+  ],
+  "feature_mean": [
+    13.757397651672363,
+    0.4701892137527466,
+    2.172236442565918,
+    1.0580917596817017,
+    0.251890629529953,
+    0.4317800998687744
+  ],
+  "feature_std": [
+    4.751468658447266,
+    0.2233690619468689,
+    1.0501223802566528,
+    0.6850875020027161,
+    0.07217931002378464,
+    0.26440033316612244
+  ],
+  "id2label": {
+    "0": "REAL",
+    "1": "FAKE"
+  }
+}

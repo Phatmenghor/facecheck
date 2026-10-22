@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  # ============================================================================
+  # FaceCheck Backend API Service (Isolated, Read-Only, Non-Root)
+  # Local Standalone REST API (Direct Port 8000, No Nginx / Certs Needed)
+  # ============================================================================
+  facecheck-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: facecheck-api:latest
+    container_name: facecheck_api
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64M
+    ports:
+      - "8000:8000"
+    environment:
+      - FACECHECK_OFFLINE_MODE=true
+      - FACECHECK_SERVER_HOST=0.0.0.0
+      - FACECHECK_SERVER_PORT=8000
+      - FACECHECK_API_KEYS=bank_core_service:fc-prod-secret-key-bank-core-9872,ad_verification_service:fc-prod-secret-key-ad-verify-5431
+      # Optional: enable biometric AES-256 image encryption at rest
+      # - FACECHECK_SAVE_ENCRYPTED_IMAGES=true
+      # - FACECHECK_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./models:/app/models:ro
+      - ./logs:/app/logs:rw
+      - ./storage:/app/storage:rw
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
+          cpus: "0.5"
+          memory: 512M
