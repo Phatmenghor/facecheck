@@ -1,0 +1,116 @@
+{
+  "evaluation_timestamp": "2026-10-22T08:57:09.567644+00:00",
+  "target_samples": 10000,
+  "target_status": "PARTIAL",
+  "execution_time_seconds": 326.94,
+  "accounting": {
+    "files_discovered": 1540,
+    "files_eligible": 1540,
+    "files_processed_successfully": 1540,
+    "files_skipped_cached": 0,
+    "files_failed": 0,
+    "total_biometric_trials_evaluated": 9276
+  },
+  "models_evaluated": {
+    "face_detector": "OpenCV YuNet ONNX (2023mar)",
+    "face_recognizer": "OpenCV SFace ONNX (2021dec)",
+    "pad_pipeline": "Texture Halftone + Screen Moire FFT + Forensic Classifier"
+  },
+  "metrics": {
+    "face_detection": {
+      "total_samples": 1540,
+      "true_positives": 1014,
+      "false_positives": 0,
+      "false_negatives": 426,
+      "true_negatives": 100,
+      "precision": 1.0,
+      "recall": 0.7042,
+      "f1_score": 0.8264,
+      "recall_95ci": [
+        0.6801,
+        0.7272
+      ]
+    },
+    "image_quality": {
+      "total_checked": 1540,
+      "pass_rate": 0.7279,
+      "mean_laplacian_variance": 1253.56,
+      "mean_luminance": 190.16,
+      "mean_compression_blockiness": 0.0
+    },
+    "face_matching": {
+      "genuine_pairs_evaluated": 1399,
+      "impostor_pairs_evaluated": 4197,
+      "calibrated_threshold": 0.363,
+      "fmr_at_calibrated": 0.9995,
+      "fnmr_at_calibrated": 0.0,
+      "threshold_at_far_1pct": 0.9189,
+      "fnmr_at_far_1pct": 0.8771,
+      "threshold_at_far_01pct": 0.953,
+      "fnmr_at_far_01pct": 0.9736,
+      "equal_error_rate": 0.2862,
+      "eer_threshold": 0.8,
+      "roc_auc": 0.7833,
+      "roc_auc_95ci": [
+        0.7681,
+        0.7985
+      ],
+      "genuine_score_distribution": {
+        "mean": 0.8427,
+        "std": 0.0721,
+        "min": 0.4551,
+        "max": 0.9827
+      },
+      "impostor_score_distribution": {
+        "mean": 0.7494,
+        "std": 0.1006,
+        "min": 0.3231,
+        "max": 0.967
+      }
+    },
+    "presentation_attack_detection": {
+      "total_pad_samples": 600,
+      "bona_fide_samples": 200,
+      "bpcer": 1.0,
+      "total_attacks": 400,
+      "apcer_overall": 0.0,
+      "apcer_by_attack_type": {
+        "PRINT_ATTACK": 0.0,
+        "SCREEN_REPLAY": 0.0,
+        "DIGITAL_MANIPULATION": 0.0
+      },
+      "acer": 0.5,
+      "pad_roc_auc": 0.27,
+      "confusion_matrix": {
+        "GENUINE": {
+          "GENUINE": 0,
+          "PRINT_ATTACK": 0,
+          "SCREEN_REPLAY": 0,
+          "DIGITAL_MANIPULATION": 200,
+          "UNCERTAIN": 0
+        },
+        "PRINT_ATTACK": {
+          "GENUINE": 0,
+          "PRINT_ATTACK": 0,
+          "SCREEN_REPLAY": 0,
+          "DIGITAL_MANIPULATION": 150,
+          "UNCERTAIN": 0
+        },
+        "SCREEN_REPLAY": {
+          "GENUINE": 0,
+          "PRINT_ATTACK": 0,
+          "SCREEN_REPLAY": 0,
+          "DIGITAL_MANIPULATION": 150,
+          "UNCERTAIN": 0
+        },
+        "DIGITAL_MANIPULATION": {
+          "GENUINE": 0,
+          "PRINT_ATTACK": 0,
+          "SCREEN_REPLAY": 0,
+          "DIGITAL_MANIPULATION": 100,
+          "UNCERTAIN": 0
+        }
+      }
+    }
+  }
+}

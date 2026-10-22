@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-10-22T08:48:49.754031+00:00",
+  "target_samples": 10000,
+  "available_disk_gb": 251.24,
+  "audit_results": [
+    {
+      "dataset_key": "celeba_spoof",
+      "official_url": "https://mmlab.ie.cuhk.edu.hk/projects/CelebA/CelebA_Spoof.html",
+      "license": "Non-Commercial / Research-Only",
+      "commercial_use_allowed": false,
+      "access_restrictions": "Requires signing agreement with CUHK MMLab. Commercial use strictly prohibited.",
+      "endpoint_reachability": "HTTP 200",
+      "acquisition_status": "BLOCKED_MANUAL_APPROVAL_REQUIRED",
+      "notes": "Requires signing agreement with CUHK MMLab. Commercial use strictly prohibited."
+    },
+    {
+      "dataset_key": "oulu_npu",
+      "official_url": "https://sites.google.com/site/oulunpudatabase/",
+      "license": "Non-Commercial / Academic Research",
+      "commercial_use_allowed": false,
+      "access_restrictions": "Requires formal written request to University of Oulu. Automated download not permitted.",
+      "endpoint_reachability": "HTTP 200",
+      "acquisition_status": "BLOCKED_MANUAL_APPROVAL_REQUIRED",
+      "notes": "Requires formal written request to University of Oulu. Automated download not permitted."
+    },
+    {
+      "dataset_key": "faceforensics_plus_plus",
+      "official_url": "https://github.com/ondyari/faceforensics",
+      "license": "TUM Research License",
+      "commercial_use_allowed": false,
+      "access_restrictions": "Requires completing Google Form request to Technical University of Munich. Automated scraping blocked.",
+      "endpoint_reachability": "HTTP 200",
+      "acquisition_status": "BLOCKED_MANUAL_APPROVAL_REQUIRED",
+      "notes": "Requires completing Google Form request to Technical University of Munich. Automated scraping blocked."
+    },
+    {
+      "dataset_key": "casia_face_anti_spoofing",
+      "official_url": "http://www.cbsr.ia.ac.cn/english/FaceAntiSpoofDatabases.asp",
+      "license": "Academic Research Agreement",
+      "commercial_use_allowed": false,
+      "access_restrictions": "Requires signed release agreement to CBSR CASIA. Not for commercial systems.",
+      "endpoint_reachability": "HTTP 200",
+      "acquisition_status": "BLOCKED_MANUAL_APPROVAL_REQUIRED",
+      "notes": "Requires signed release agreement to CBSR CASIA. Not for commercial systems."
+    },
+    {
+      "dataset_key": "replay_attack",
+      "official_url": "https://www.idiap.ch/en/scientific-research/data/replayattack",
+      "license": "Idiap Research Data License",
+      "commercial_use_allowed": false,
+      "access_restrictions": "Requires registration and user agreement with Idiap Research Institute.",
+      "endpoint_reachability": "Err: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1032)>",
+      "acquisition_status": "BLOCKED_MANUAL_APPROVAL_REQUIRED",
+      "notes": "Requires registration and user agreement with Idiap Research Institute."
+    },
+    {
+      "dataset_key": "siw_mv2",
+      "official_url": "https://cvlab.cse.msu.edu/siw-mv2-dataset.html",
+      "license": "MSU Research Agreement",
+      "commercial_use_allowed": false,
+      "access_restrictions": "Requires signed release agreement to Michigan State University CVLAB.",
+      "endpoint_reachability": "Err: <urlopen error timed out>",
+      "acquisition_status": "BLOCKED_MANUAL_APPROVAL_REQUIRED",
+      "notes": "Requires signed release agreement to Michigan State University CVLAB."
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "system": {
+    "platform": "Windows-11-10.0.26100-SP0",
+    "architecture": "AMD64",
+    "cpu_cores": 8,
+    "python_version": "3.13.17 (tags/v3.13.17:64e080d, Oct 21 2026, 14:08:53) [MSC v.1944 64 bit (AMD64)]",
+    "python_executable": "C:\\Users\\menghor.phat\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+    "total_ram_gb": 15.41,
+    "available_ram_gb": 3.85
+  },
+  "gpu": {
+    "cuda_available": false,
+    "device_count": 0,
+    "device_names": [
+      "Intel(R) Iris(R) Xe Graphics"
+    ],
+    "driver_info": "CPU-only execution"
+  },
+  "dependencies": {
+    "fastapi": {
+      "pinned": "0.115.6",
+      "installed": "0.159.1",
+      "status": "COMPATIBLE"
+    },
+    "uvicorn": {
+      "pinned": "0.34.0",
+      "installed": "0.54.0",
+      "status": "COMPATIBLE"
+    },
+    "pydantic": {
+      "pinned": "2.10.4",
+      "installed": "2.14.1",
+      "status": "COMPATIBLE"
+    },
+    "pydantic-settings": {
+      "pinned": "2.7.1",
+      "installed": "2.16.1",
+      "status": "COMPATIBLE"
+    },
+    "pyyaml": {
+      "pinned": "6.0.2",
+      "installed": "6.0.3",
+      "status": "COMPATIBLE"
+    },
+    "python-multipart": {
+      "pinned": "0.0.20",
+      "installed": "0.0.32",
+      "status": "COMPATIBLE"
+    },
+    "cryptography": {
+      "pinned": "44.0.0",
+      "installed": "50.0.2",
+      "status": "COMPATIBLE"
+    },
+    "pillow": {
+      "pinned": "11.1.0",
+      "installed": "13.0.0",
+      "status": "COMPATIBLE"
+    },
+    "exifread": {
+      "pinned": "3.0.0",
+      "installed": "3.5.1",
+      "status": "COMPATIBLE"
+    },
+    "imagehash": {
+      "pinned": "4.3.1",
+      "installed": "4.3.2",
+      "status": "COMPATIBLE"
+    },
+    "numpy": {
+      "pinned": "1.26.4",
+      "installed": "2.5.4",
+      "status": "COMPATIBLE"
+    },
+    "opencv-python-headless": {
+      "pinned": "4.10.0.84",
+      "installed": "5.0.0.93",
+      "status": "COMPATIBLE"
+    },
+    "torch": {
+      "pinned": "2.5.1",
+      "installed": null,
+      "status": "MISSING"
+    },
+    "transformers": {
+      "pinned": "4.47.1",
+      "installed": null,
+      "status": "MISSING"
+    },
+    "safetensors": {
+      "pinned": "0.5.1",
+      "installed": "0.8.0",
+      "status": "COMPATIBLE"
+    },
+    "onnxruntime": {
+      "pinned": "1.20.1",
+      "installed": null,
+      "status": "MISSING"
+    },
+    "pytest": {
+      "pinned": "8.3.4",
+      "installed": "9.1.1",
+      "status": "COMPATIBLE"
+    },
+    "pytest-asyncio": {
+      "pinned": "0.25.0",
+      "installed": "1.4.0",
+      "status": "COMPATIBLE"
+    },
+    "httpx": {
+      "pinned": "0.28.1",
+      "installed": "0.28.1",
+      "status": "MATCH"
+    }
+  },
+  "models": [
+    {
+      "path": "models/face_detection_yunet_2023mar.onnx",
+      "size_bytes": 232589,
+      "sha256": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"
+    },
+    {
+      "path": "models/face_recognition_sface_2021dec.onnx",
+      "size_bytes": 38696353,
+      "sha256": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
+    },
+    {
+      "path": "models/deepfake_detector/config.json",
+      "size_bytes": 685,
+      "sha256": "db39f411ddcf6dcf60f5f3398ad27b95ceb840ea1e8a1331216598f05b31c66b"
+    },
+    {
+      "path": "models/deepfake_detector/model.safetensors",
+      "size_bytes": 155,
+      "sha256": "0590cc911d01c496b2df84f736c26a737e10edf16d60a74a0ded82a7ef374aa7"
+    }
+  ]
+}

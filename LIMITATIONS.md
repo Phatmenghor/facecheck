@@ -33,7 +33,16 @@ For any advertising approval decision involving customer accounts, credit produc
 - **Re-compression & Post-Processing:** Applying strong analog grain filters, heavy blur, or noise addition can alter high-frequency Fourier spectra.
 - **Adversarial Perturbations:** Sophisticated attackers who deliberately craft imperceptible pixel perturbations can attempt to manipulate deep neural network activations.
 
-### 2.4 Demographic Diversity & Parity
+### 2.4 Biometric Face Verification Limitations (1:1 Matching)
+- **Separate Architectural Components:** Face matching, image quality assessment, and anti-spoofing operate as completely independent modules because they answer fundamentally different questions. An authentic face match does NOT establish physical liveness, and a high-quality photograph does NOT establish identity.
+- **False Match & False Non-Match Realities:** Biometric 1:1 face matching is probabilistic. Operating at an FMR (False Match Rate) of $0.1\%$ entails an operational trade-off with FNMR (False Non-Match Rate). Appearance changes due to major age progression, trauma, medical conditions, dramatic weight changes, or extreme lighting can cause false non-matches.
+- **Non-Match Does Not Prove Fraud:** A non-matching face score indicates identity discrepancy between the two presented photos, not intentional fraud or malicious impersonation.
+
+### 2.5 Presentation-Attack Detection (PAD) & Static Image Liveness
+- **Static Photos Never Prove Liveness:** A single static 2D photograph alone CANNOT prove that a human being is physically live and present. Static PAD checks evaluate surface artifacts (paper texture, halftone dots, moiré grids, screen bezels, specular reflection) only.
+- **Interactive Verification Mandate:** For high-assurance KYC transactions (e.g. account opening, large fund transfers), an interactive challenge-response sequence (randomized head pose challenges) or video sequence is required.
+
+### 2.6 Demographic Diversity & Parity
 - Face detection utilizes the OpenCV YuNet ONNX architecture, which was benchmarked across diverse lighting, poses, and international facial features.
 - However, model performance across varying demographic groups, skin tones, age groups, and religious or cultural headwear (e.g., turbans, hijabs) must be continuously benchmarked using the bank's internal test set via `scripts/evaluate.py` to ensure parity.
 

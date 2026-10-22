@@ -20,12 +20,21 @@ from app.services.validator import (
     UnsupportedFileTypeError,
     InvalidImageError,
 )
-from app.services.face_detector import get_face_detector
+from app.services.face_detector import get_face_detector, FaceCrop
 from app.detectors.factory import get_detector
 from app.services.audit import write_audit_record
 from app.services.encryption import get_encryption
 from app.services.metrics import get_metrics
 from app.services.sandbox import get_sandbox, SandboxTimeoutError, SandboxWorkerError
+from app.services.quality import inspect_image_quality
+from app.face_matching.matcher import compare_faces, FaceMatchResult, format_raw_face_detection
+from app.face_matching.models import get_face_recognizer
+from app.anti_spoofing.pad_service import evaluate_pad, PADResult
+from app.anti_spoofing.challenge import (
+    get_challenge_manager,
+    ChallengeSession,
+    ChallengeVerificationResult,
+)
 
 logger = logging.getLogger("facecheck.api")
 
@@ -340,3 +349,335 @@ def health_check():
         device=config.ai_detector.device,
         timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat(),
     )
+
+
+# =============================================================================
+# V1 FACE & BIOMETRIC VERIFICATION ENDPOINTS
+# =============================================================================
+
+class FaceBoxDetail(BaseModel):
+    box: List[int] = Field(..., description="[x, y, w, h] coordinates")
+    confidence: float = Field(..., description="Face detector confidence score")
+    landmarks: List[List[float]] = Field(default_factory=list, description="5 facial landmarks [[x,y], ...]")
+
+
+class DetectResponse(BaseModel):
+    faces_found: int
+    faces: List[FaceBoxDetail]
+    image_width: int
+    image_height: int
+
+
+@router.post("/detect", response_model=DetectResponse)
+async def detect_faces_endpoint(
+    request: Request,
+    image: Optional[UploadFile] = File(None),
+    file: Optional[UploadFile] = File(None),
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Detect faces and extract 5 facial landmarks using offline OpenCV YuNet."""
+    upload = image or file
+    if upload is None or not upload.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "BAD_REQUEST", "message": "Field 'image' or 'file' with filename is required."},
+        )
+
+    raw_bytes = await upload.read()
+    try:
+        pil_img, _, _ = validate_and_load_image(upload.filename, raw_bytes)
+    except (FileTooLargeError, UnsupportedFileTypeError, InvalidImageError) as err:
+        code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE if isinstance(err, FileTooLargeError) else (
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE if isinstance(err, UnsupportedFileTypeError) else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail={"error": type(err).__name__, "message": str(err)})
+
+    detector = get_face_detector()
+    crops = detector.detect_and_crop(pil_img)
+    w, h = pil_img.size
+
+    boxes = [
+        FaceBoxDetail(
+            box=c.box,
+            confidence=c.confidence,
+            landmarks=[[float(pt[0]), float(pt[1])] for pt in c.landmarks],
+        )
+        for c in crops
+    ]
+    return DetectResponse(faces_found=len(boxes), faces=boxes, image_width=w, image_height=h)
+
+
+class QualityResponse(BaseModel):
+    status: str = Field(..., description="'OK' or 'LOW_QUALITY'")
+    issues: List[str]
+    metrics: Dict[str, Any]
+
+
+@router.post("/quality", response_model=QualityResponse)
+async def quality_check_endpoint(
+    request: Request,
+    image: Optional[UploadFile] = File(None),
+    file: Optional[UploadFile] = File(None),
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Evaluate image quality against KYC biometric standards (blur, luminance, compression)."""
+    upload = image or file
+    if upload is None or not upload.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "BAD_REQUEST", "message": "Field 'image' or 'file' is required."},
+        )
+
+    raw_bytes = await upload.read()
+    try:
+        pil_img, _, size_bytes = validate_and_load_image(upload.filename, raw_bytes)
+    except (FileTooLargeError, UnsupportedFileTypeError, InvalidImageError) as err:
+        code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE if isinstance(err, FileTooLargeError) else (
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE if isinstance(err, UnsupportedFileTypeError) else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail={"error": type(err).__name__, "message": str(err)})
+
+    detector = get_face_detector()
+    crops = detector.detect_and_crop(pil_img)
+    face_boxes = [c.box for c in crops]
+    q_res = inspect_image_quality(pil_img, size_bytes, face_boxes)
+
+    return QualityResponse(status=q_res.status, issues=q_res.issues, metrics=q_res.metrics)
+
+
+class EmbeddingResponse(BaseModel):
+    faces_detected: int
+    embedding: Optional[List[float]] = Field(None, description="128-dimensional L2-normalized embedding vector")
+    box: Optional[List[int]] = Field(None, description="Bounding box [x, y, w, h]")
+    landmarks: Optional[List[List[float]]] = None
+    model_version: str
+
+
+@router.post("/extract-embedding", response_model=EmbeddingResponse)
+async def extract_embedding_endpoint(
+    request: Request,
+    image: Optional[UploadFile] = File(None),
+    file: Optional[UploadFile] = File(None),
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Extract 128-dimensional L2-normalized facial embedding using OpenCV SFace."""
+    upload = image or file
+    if upload is None or not upload.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "BAD_REQUEST", "message": "Field 'image' or 'file' is required."},
+        )
+
+    raw_bytes = await upload.read()
+    try:
+        pil_img, _, _ = validate_and_load_image(upload.filename, raw_bytes)
+    except (FileTooLargeError, UnsupportedFileTypeError, InvalidImageError) as err:
+        code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE if isinstance(err, FileTooLargeError) else (
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE if isinstance(err, UnsupportedFileTypeError) else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail={"error": type(err).__name__, "message": str(err)})
+
+    rec = get_face_recognizer()
+    if not rec.is_loaded:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error": "MODEL_UNAVAILABLE", "message": "Face recognition model is not loaded offline."},
+        )
+
+    detector = get_face_detector()
+    crops = detector.detect_and_crop(pil_img)
+    if not crops:
+        return EmbeddingResponse(
+            faces_detected=0,
+            embedding=None,
+            box=None,
+            landmarks=None,
+            model_version=rec.model_name,
+        )
+
+    # Use primary face
+    primary = crops[0]
+    import cv2
+    import numpy as np
+    bgr = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+    raw_det = format_raw_face_detection(primary)
+    emb = rec.extract_embedding(bgr, raw_det)
+
+    return EmbeddingResponse(
+        faces_detected=len(crops),
+        embedding=[round(float(v), 6) for v in emb.tolist()],
+        box=primary.box,
+        landmarks=[[float(pt[0]), float(pt[1])] for pt in primary.landmarks],
+        model_version=rec.model_name,
+    )
+
+
+@router.post("/match", response_model=FaceMatchResult)
+async def match_faces_endpoint(
+    request: Request,
+    image_a: UploadFile = File(...),
+    image_b: UploadFile = File(...),
+    threshold: Optional[float] = Form(None),
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Compare two facial photographs and determine if they belong to the same person."""
+    if not image_a.filename or not image_b.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "BAD_REQUEST", "message": "Both image_a and image_b must include filenames."},
+        )
+
+    bytes_a = await image_a.read()
+    bytes_b = await image_b.read()
+
+    try:
+        pil_a, _, _ = validate_and_load_image(image_a.filename, bytes_a)
+    except (FileTooLargeError, UnsupportedFileTypeError, InvalidImageError) as err:
+        code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE if isinstance(err, FileTooLargeError) else (
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE if isinstance(err, UnsupportedFileTypeError) else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail={"error": "IMAGE_A_INVALID", "message": str(err)})
+
+    try:
+        pil_b, _, _ = validate_and_load_image(image_b.filename, bytes_b)
+    except (FileTooLargeError, UnsupportedFileTypeError, InvalidImageError) as err:
+        code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE if isinstance(err, FileTooLargeError) else (
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE if isinstance(err, UnsupportedFileTypeError) else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail={"error": "IMAGE_B_INVALID", "message": str(err)})
+
+    match_result = compare_faces(pil_a, pil_b, custom_threshold=threshold)
+    return match_result
+
+
+@router.post("/pad", response_model=PADResult)
+async def pad_endpoint(
+    request: Request,
+    image: Optional[UploadFile] = File(None),
+    file: Optional[UploadFile] = File(None),
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Evaluate Presentation-Attack Detection across physical print, screen replay, and digital vectors."""
+    upload = image or file
+    if upload is None or not upload.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "BAD_REQUEST", "message": "Field 'image' or 'file' is required."},
+        )
+
+    raw_bytes = await upload.read()
+    try:
+        pil_img, _, _ = validate_and_load_image(upload.filename, raw_bytes)
+    except (FileTooLargeError, UnsupportedFileTypeError, InvalidImageError) as err:
+        code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE if isinstance(err, FileTooLargeError) else (
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE if isinstance(err, UnsupportedFileTypeError) else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail={"error": type(err).__name__, "message": str(err)})
+
+    detector = get_face_detector()
+    crops = detector.detect_and_crop(pil_img)
+    face_box = tuple(crops[0].box) if crops else None
+
+    pad_res = evaluate_pad(pil_img, face_box)
+    return pad_res
+
+
+class ChallengeSessionResponse(BaseModel):
+    session_id: str
+    challenge_sequence: List[str]
+    expires_at: float
+
+
+@router.post("/liveness/challenge/session", response_model=ChallengeSessionResponse)
+def create_challenge_session_endpoint(
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Generate a single-use interactive liveness head-movement challenge sequence."""
+    cm = get_challenge_manager()
+    session = cm.create_session(sequence_length=3)
+    return ChallengeSessionResponse(
+        session_id=session.session_id,
+        challenge_sequence=session.challenge_sequence,
+        expires_at=session.expires_at,
+    )
+
+
+class ChallengeVerifyRequest(BaseModel):
+    session_id: str
+    frame_poses: List[Dict[str, float]] = Field(..., description="List of observed head poses [{yaw, pitch, roll}]")
+
+
+@router.post("/liveness/challenge/verify", response_model=ChallengeVerificationResult)
+def verify_challenge_endpoint(
+    payload: ChallengeVerifyRequest,
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Verify submitted sequential head poses against assigned challenge movements."""
+    cm = get_challenge_manager()
+    result = cm.verify_poses(payload.session_id, payload.frame_poses)
+    return result
+
+
+class ModelInventoryItem(BaseModel):
+    name: str
+    category: str
+    file_path: str
+    loaded: bool
+    size_bytes: int
+
+
+class ModelsResponse(BaseModel):
+    models: List[ModelInventoryItem]
+
+
+@router.get("/models", response_model=ModelsResponse)
+def list_models_endpoint(
+    api_key_name: str = Depends(verify_api_key),
+):
+    """Inspect offline local model weights and active loading states."""
+    from pathlib import Path
+    project_root = Path(__file__).resolve().parent.parent.parent
+
+    items: List[ModelInventoryItem] = []
+    # YuNet
+    yunet_p = project_root / "models" / "face_detection_yunet_2023mar.onnx"
+    det = get_face_detector()
+    items.append(ModelInventoryItem(
+        name="YuNet Face Detector",
+        category="detection",
+        file_path="models/face_detection_yunet_2023mar.onnx",
+        loaded=det.is_loaded,
+        size_bytes=yunet_p.stat().st_size if yunet_p.is_file() else 0,
+    ))
+
+    # SFace
+    sface_p = project_root / "models" / "face_recognition_sface_2021dec.onnx"
+    rec = get_face_recognizer()
+    items.append(ModelInventoryItem(
+        name="SFace Face Recognizer",
+        category="recognition",
+        file_path="models/face_recognition_sface_2021dec.onnx",
+        loaded=rec.is_loaded,
+        size_bytes=sface_p.stat().st_size if sface_p.is_file() else 0,
+    ))
+
+    # Safetensors Classifier
+    st_p = project_root / "models" / "deepfake_detector" / "model.safetensors"
+    ai_det = get_detector()
+    items.append(ModelInventoryItem(
+        name="Forensic Feature Probe",
+        category="pad_classifier",
+        file_path="models/deepfake_detector/model.safetensors",
+        loaded=ai_det.is_ready,
+        size_bytes=st_p.stat().st_size if st_p.is_file() else 0,
+    ))
+
+    return ModelsResponse(models=items)
+

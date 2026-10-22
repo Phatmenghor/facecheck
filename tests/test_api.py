@@ -14,6 +14,12 @@ VALID_API_KEY = "fc-prod-secret-key-bank-core-9872"
 def create_image_file(fmt: str = "JPEG", size=(150, 150), has_face: bool = False):
     buf = io.BytesIO()
     if has_face:
+        fixture_path = Path(__file__).resolve().parent / "fixtures" / "valid_face_clean.jpg"
+        if fixture_path.is_file():
+            img = Image.open(fixture_path)
+            img.save(buf, format=fmt)
+            buf.seek(0)
+            return buf
         ref_path = Path(__file__).resolve().parent.parent / "eval" / "data" / "real" / "portrait_01.jpg"
         if ref_path.is_file():
             img = Image.open(ref_path)

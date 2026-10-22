@@ -1,0 +1,4 @@
+# Official SHA-256 Checksums for FaceCheck Offline Models
+8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4  models/face_detection_yunet_2023mar.onnx
+0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79  models/face_recognition_sface_2021dec.onnx
+0590cc911d01c496b2df84f736c26a737e10edf16d60a74a0ded82a7ef374aa7  models/deepfake_detector/model.safetensors

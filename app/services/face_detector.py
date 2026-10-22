@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from pathlib import Path
 from typing import List, Tuple, Optional
 import numpy as np
@@ -38,6 +39,7 @@ class YuNetDetector:
         self.nms_threshold = config.face_detection.nms_threshold
         self.top_k = config.face_detection.top_k
         self.crop_margin_ratio = config.face_detection.crop_margin_ratio
+        self._lock = threading.Lock()
         self._detector = None
         self._load_model()
 
@@ -85,8 +87,9 @@ class YuNetDetector:
                 import cv2
                 np_img = np.array(pil_image)
                 bgr_img = cv2.cvtColor(np_img, cv2.COLOR_RGB2BGR)
-                self._detector.setInputSize((img_w, img_h))
-                _, faces = self._detector.detect(bgr_img)
+                with self._lock:
+                    self._detector.setInputSize((img_w, img_h))
+                    _, faces = self._detector.detect(bgr_img)
                 if faces is not None:
                     for face in faces:
                         x, y, w, h = int(face[0]), int(face[1]), int(face[2]), int(face[3])

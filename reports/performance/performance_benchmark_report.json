@@ -1,0 +1,112 @@
+{
+  "timestamp": "2026-10-22T08:59:36.203120+00:00",
+  "platform": {
+    "os": "win32",
+    "python_version": "3.13.17",
+    "inference_mode": "CPU-Only (Bank Standard)",
+    "logical_cores": 8
+  },
+  "model_loading_latency_ms": {
+    "yunet_face_detector": 19.2,
+    "sface_face_recognizer": 78.04,
+    "deepfake_forensic_classifier": 2.12,
+    "total_initialization_ms": 99.36
+  },
+  "per_operation_latencies": {
+    "face_detection": {
+      "mean_ms": 4.88,
+      "median_p50_ms": 4.63,
+      "p90_ms": 5.58,
+      "p95_ms": 6.45,
+      "p99_ms": 12.2,
+      "min_ms": 3.79,
+      "max_ms": 14.87
+    },
+    "facial_5point_alignment": {
+      "mean_ms": 0.37,
+      "median_p50_ms": 0.28,
+      "p90_ms": 0.39,
+      "p95_ms": 0.43,
+      "p99_ms": 1.03,
+      "min_ms": 0.21,
+      "max_ms": 7.37
+    },
+    "embedding_extraction_128d": {
+      "mean_ms": 9.53,
+      "median_p50_ms": 9.18,
+      "p90_ms": 11.23,
+      "p95_ms": 12.67,
+      "p99_ms": 13.75,
+      "min_ms": 7.16,
+      "max_ms": 28.64
+    },
+    "cosine_similarity": {
+      "mean_ms": 0.02,
+      "median_p50_ms": 0.02,
+      "p90_ms": 0.03,
+      "p95_ms": 0.03,
+      "p99_ms": 0.08,
+      "min_ms": 0.01,
+      "max_ms": 0.09
+    },
+    "pad_multisignal_analysis": {
+      "mean_ms": 26.37,
+      "median_p50_ms": 25.45,
+      "p90_ms": 30.43,
+      "p95_ms": 33.69,
+      "p99_ms": 35.75,
+      "min_ms": 21.51,
+      "max_ms": 38.72
+    },
+    "end_to_end_face_comparison": {
+      "mean_ms": 33.71,
+      "median_p50_ms": 31.92,
+      "p90_ms": 37.22,
+      "p95_ms": 42.36,
+      "p99_ms": 79.09,
+      "min_ms": 24.93,
+      "max_ms": 137.45
+    }
+  },
+  "throughput": {
+    "batch_processed_count": 60,
+    "elapsed_seconds": 0.9,
+    "images_per_second": 66.79
+  },
+  "concurrency_scaling": {
+    "1_workers": {
+      "workers": 1,
+      "tasks_completed": 40,
+      "elapsed_seconds": 1.185,
+      "requests_per_second": 33.75,
+      "avg_latency_ms": 29.63
+    },
+    "2_workers": {
+      "workers": 2,
+      "tasks_completed": 40,
+      "elapsed_seconds": 1.018,
+      "requests_per_second": 39.31,
+      "avg_latency_ms": 25.44
+    },
+    "4_workers": {
+      "workers": 4,
+      "tasks_completed": 40,
+      "elapsed_seconds": 1.244,
+      "requests_per_second": 32.15,
+      "avg_latency_ms": 31.1
+    },
+    "8_workers": {
+      "workers": 8,
+      "tasks_completed": 40,
+      "elapsed_seconds": 1.576,
+      "requests_per_second": 25.38,
+      "avg_latency_ms": 39.4
+    }
+  },
+  "memory_profile_mb": {
+    "rss_start": 0.0,
+    "rss_peak": 0.0,
+    "rss_after_gc": 0.0,
+    "leakage_delta": 0.0
+  }
+}
