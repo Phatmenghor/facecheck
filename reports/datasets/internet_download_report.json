@@ -1,0 +1,34 @@
+{
+  "report_title": "FaceCheck API V1 - Internet Image Acquisition & Deduplication Report",
+  "generated_at": "2026-10-22T09:24:20.983187+00:00",
+  "target_samples": 1000,
+  "seed": 42,
+  "elapsed_seconds": 265.09,
+  "accounting": {
+    "total_discovered": 9246,
+    "download_attempts": 1044,
+    "download_success": 1000,
+    "duplicates_rejected": 6,
+    "corrupt_rejected": 0,
+    "skipped_existing": 1,
+    "http_errors": 64
+  },
+  "category_distribution": {
+    "A": 426,
+    "B": 434,
+    "C": 140,
+    "D": 15,
+    "E": 15,
+    "F": 15,
+    "G": 15,
+    "H": 15,
+    "I": 15,
+    "J": 15
+  },
+  "unique_samples_saved": 1105,
+  "sources_utilized": [
+    "Wikimedia Commons",
+    "Picsum Photos / Unsplash",
+    "Pravatar CC0 Portraits"
+  ]
+}

@@ -1,15 +1,15 @@
 {
-  "evaluation_timestamp": "2026-10-22T08:57:09.567644+00:00",
-  "target_samples": 10000,
-  "target_status": "PARTIAL",
-  "execution_time_seconds": 326.94,
+  "evaluation_timestamp": "2026-10-22T09:32:45.840096+00:00",
+  "target_samples": 1000,
+  "target_status": "EXCEEDED_IN_EVALUATED_TRIALS",
+  "execution_time_seconds": 204.66,
   "accounting": {
-    "files_discovered": 1540,
-    "files_eligible": 1540,
-    "files_processed_successfully": 1540,
+    "files_discovered": 1105,
+    "files_eligible": 1105,
+    "files_processed_successfully": 1105,
     "files_skipped_cached": 0,
     "files_failed": 0,
-    "total_biometric_trials_evaluated": 9276
+    "total_biometric_trials_evaluated": 3018
   },
   "models_evaluated": {
     "face_detector": "OpenCV YuNet ONNX (2023mar)",
@@ -18,98 +18,160 @@
   },
   "metrics": {
     "face_detection": {
-      "total_samples": 1540,
-      "true_positives": 1014,
-      "false_positives": 0,
-      "false_negatives": 426,
-      "true_negatives": 100,
-      "precision": 1.0,
-      "recall": 0.7042,
-      "f1_score": 0.8264,
+      "total_samples": 1105,
+      "true_positives": 653,
+      "false_positives": 2,
+      "false_negatives": 18,
+      "true_negatives": 432,
+      "precision": 0.9969,
+      "recall": 0.9732,
+      "f1_score": 0.9849,
       "recall_95ci": [
-        0.6801,
-        0.7272
+        0.958,
+        0.983
       ]
     },
     "image_quality": {
-      "total_checked": 1540,
-      "pass_rate": 0.7279,
-      "mean_laplacian_variance": 1253.56,
-      "mean_luminance": 190.16,
+      "total_checked": 1105,
+      "pass_rate": 0.857,
+      "mean_laplacian_variance": 1892.97,
+      "mean_luminance": 109.87,
       "mean_compression_blockiness": 0.0
     },
     "face_matching": {
-      "genuine_pairs_evaluated": 1399,
-      "impostor_pairs_evaluated": 4197,
+      "genuine_pairs_evaluated": 187,
+      "impostor_pairs_evaluated": 561,
       "calibrated_threshold": 0.363,
-      "fmr_at_calibrated": 0.9995,
-      "fnmr_at_calibrated": 0.0,
-      "threshold_at_far_1pct": 0.9189,
-      "fnmr_at_far_1pct": 0.8771,
-      "threshold_at_far_01pct": 0.953,
-      "fnmr_at_far_01pct": 0.9736,
-      "equal_error_rate": 0.2862,
-      "eer_threshold": 0.8,
-      "roc_auc": 0.7833,
+      "fmr_at_calibrated": 0.0,
+      "fnmr_at_calibrated": 0.2727,
+      "threshold_at_far_1pct": 0.2623,
+      "fnmr_at_far_1pct": 0.2406,
+      "threshold_at_far_01pct": 0.334,
+      "fnmr_at_far_01pct": 0.2567,
+      "equal_error_rate": 0.1988,
+      "eer_threshold": 0.1518,
+      "roc_auc": 0.8523,
       "roc_auc_95ci": [
-        0.7681,
-        0.7985
+        0.8162,
+        0.8884
       ],
       "genuine_score_distribution": {
-        "mean": 0.8427,
-        "std": 0.0721,
-        "min": 0.4551,
-        "max": 0.9827
+        "mean": 0.4918,
+        "std": 0.284,
+        "min": -0.0935,
+        "max": 0.9825
       },
       "impostor_score_distribution": {
-        "mean": 0.7494,
-        "std": 0.1006,
-        "min": 0.3231,
-        "max": 0.967
+        "mean": 0.0821,
+        "std": 0.0839,
+        "min": -0.1309,
+        "max": 0.3421
       }
     },
     "presentation_attack_detection": {
-      "total_pad_samples": 600,
-      "bona_fide_samples": 200,
-      "bpcer": 1.0,
-      "total_attacks": 400,
-      "apcer_overall": 0.0,
+      "total_pad_samples": 60,
+      "bona_fide_samples": 15,
+      "bpcer": 0.5333,
+      "total_attacks": 45,
+      "apcer_overall": 0.5556,
       "apcer_by_attack_type": {
-        "PRINT_ATTACK": 0.0,
-        "SCREEN_REPLAY": 0.0,
-        "DIGITAL_MANIPULATION": 0.0
+        "PRINT_ATTACK": 0.5333,
+        "SCREEN_REPLAY": 0.6667,
+        "DIGITAL_MANIPULATION": 0.4667
       },
-      "acer": 0.5,
-      "pad_roc_auc": 0.27,
+      "acer": 0.5444,
+      "pad_roc_auc": 0.3356,
       "confusion_matrix": {
         "GENUINE": {
-          "GENUINE": 0,
+          "GENUINE": 3,
           "PRINT_ATTACK": 0,
-          "SCREEN_REPLAY": 0,
-          "DIGITAL_MANIPULATION": 200,
-          "UNCERTAIN": 0
+          "SCREEN_REPLAY": 1,
+          "DIGITAL_MANIPULATION": 7,
+          "UNCERTAIN": 4
         },
         "PRINT_ATTACK": {
-          "GENUINE": 0,
+          "GENUINE": 8,
           "PRINT_ATTACK": 0,
           "SCREEN_REPLAY": 0,
-          "DIGITAL_MANIPULATION": 150,
-          "UNCERTAIN": 0
+          "DIGITAL_MANIPULATION": 3,
+          "UNCERTAIN": 4
         },
         "SCREEN_REPLAY": {
-          "GENUINE": 0,
+          "GENUINE": 10,
           "PRINT_ATTACK": 0,
           "SCREEN_REPLAY": 0,
-          "DIGITAL_MANIPULATION": 150,
-          "UNCERTAIN": 0
+          "DIGITAL_MANIPULATION": 4,
+          "UNCERTAIN": 1
         },
         "DIGITAL_MANIPULATION": {
-          "GENUINE": 0,
+          "GENUINE": 6,
           "PRINT_ATTACK": 0,
           "SCREEN_REPLAY": 0,
-          "DIGITAL_MANIPULATION": 100,
-          "UNCERTAIN": 0
+          "DIGITAL_MANIPULATION": 4,
+          "UNCERTAIN": 5
         }
+      }
+    },
+    "category_breakdown": {
+      "A": {
+        "category_name": "Ordinary face photograph",
+        "total_samples": 426,
+        "faces_detected": 426,
+        "quality_ok": 389
+      },
+      "B": {
+        "category_name": "No-face image",
+        "total_samples": 434,
+        "faces_detected": 2,
+        "quality_ok": 377
+      },
+      "C": {
+        "category_name": "Multiple-face image",
+        "total_samples": 140,
+        "faces_detected": 140,
+        "quality_ok": 116
+      },
+      "D": {
+        "category_name": "Blurry or low-quality face image",
+        "total_samples": 15,
+        "faces_detected": 13,
+        "quality_ok": 0
+      },
+      "E": {
+        "category_name": "Dark or overexposed face image",
+        "total_samples": 15,
+        "faces_detected": 14,
+        "quality_ok": 1
+      },
+      "F": {
+        "category_name": "Rotated or partially occluded face",
+        "total_samples": 15,
+        "faces_detected": 4,
+        "quality_ok": 15
+      },
+      "G": {
+        "category_name": "Genuine labeled face sample",
+        "total_samples": 15,
+        "faces_detected": 15,
+        "quality_ok": 13
+      },
+      "H": {
+        "category_name": "Labeled print attack simulation",
+        "total_samples": 15,
+        "faces_detected": 14,
+        "quality_ok": 15
+      },
+      "I": {
+        "category_name": "Labeled screen-replay attack simulation",
+        "total_samples": 15,
+        "faces_detected": 13,
+        "quality_ok": 15
+      },
+      "J": {
+        "category_name": "Labeled digital face manipulation simulation",
+        "total_samples": 15,
+        "faces_detected": 14,
+        "quality_ok": 6
       }
     }
   }

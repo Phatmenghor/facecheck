@@ -43,7 +43,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("facecheck.evaluate_dataset")
 
 OUTPUT_DIR = PROJECT_ROOT / "reports" / "eval_results"
-DEFAULT_DATASET_DIR = PROJECT_ROOT / "assets" / "datasets" / "facecheck_v1_benchmark"
+DEFAULT_DATASET_DIR = (
+    PROJECT_ROOT / "assets" / "datasets" / "internet_test_images"
+    if (PROJECT_ROOT / "assets" / "datasets" / "internet_test_images" / "manifest.json").is_file()
+    else PROJECT_ROOT / "assets" / "datasets" / "facecheck_v1_benchmark"
+)
 
 
 def wilson_ci(successes: int, total: int, z: float = 1.95996) -> Tuple[float, float]:
@@ -120,17 +124,29 @@ class DatasetEvaluator:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.journal_file = self.output_dir / "progress_journal.jsonl"
         self.completed_trials: set[str] = set()
+        self.cached_genuine_scores: List[float] = []
+        self.cached_impostor_scores: List[float] = []
 
         if self.resume and self.journal_file.is_file():
             with open(self.journal_file, "r", encoding="utf-8") as f:
                 for line in f:
                     try:
                         record = json.loads(line)
-                        if "trial_id" in record:
-                            self.completed_trials.add(record["trial_id"])
+                        tid = record.get("trial_id", "")
+                        if tid:
+                            self.completed_trials.add(tid)
+                            if tid.startswith("match_gen_") and "score" in record:
+                                self.cached_genuine_scores.append(float(record["score"]))
+                            elif tid.startswith("match_imp_") and "score" in record:
+                                self.cached_impostor_scores.append(float(record["score"]))
                     except Exception:
                         pass
-            logger.info("Resuming evaluation: %d previous trials loaded from journal.", len(self.completed_trials))
+            logger.info(
+                "Resuming evaluation: %d previous trials (%d genuine pairs, %d impostor pairs) loaded from journal.",
+                len(self.completed_trials),
+                len(self.cached_genuine_scores),
+                len(self.cached_impostor_scores),
+            )
 
     def run(self) -> Dict[str, Any]:
         t_start = time.perf_counter()
@@ -184,6 +200,7 @@ class DatasetEvaluator:
 
         # Cache valid identity images for face matching pairs
         identity_image_map: Dict[str, List[Path]] = {}
+        category_stats: Dict[str, Dict[str, Any]] = {}
 
         # Open progress journal
         journal_fp = open(self.journal_file, "a", encoding="utf-8")
@@ -275,6 +292,21 @@ class DatasetEvaluator:
                 if id_tag and sample.get("category") == "identity_verification":
                     identity_image_map.setdefault(id_tag, []).append(abs_path)
 
+                # Record category stats for Categories A through J
+                cat_code = sample.get("assigned_category", "UNKNOWN")
+                if cat_code not in category_stats:
+                    category_stats[cat_code] = {
+                        "category_name": sample.get("category_description", cat_code),
+                        "total_samples": 0,
+                        "faces_detected": 0,
+                        "quality_ok": 0,
+                    }
+                category_stats[cat_code]["total_samples"] += 1
+                if num_detected >= 1:
+                    category_stats[cat_code]["faces_detected"] += 1
+                if q_res.status == "OK":
+                    category_stats[cat_code]["quality_ok"] += 1
+
                 journal_record = {
                     "trial_id": trial_id,
                     "file": rel_path,
@@ -295,9 +327,9 @@ class DatasetEvaluator:
 
         # 4. Face Matching (Verification) Evaluation across Genuine and Impostor Pairs
         logger.info("Generating and evaluating calibrated face verification pairs...")
-        genuine_scores: List[float] = []
-        impostor_scores: List[float] = []
-        matching_trials_evaluated = 0
+        genuine_scores: List[float] = list(self.cached_genuine_scores)
+        impostor_scores: List[float] = list(self.cached_impostor_scores)
+        matching_trials_evaluated = len(genuine_scores) + len(impostor_scores)
 
         identities_list = sorted(list(identity_image_map.keys()))
 
@@ -309,6 +341,7 @@ class DatasetEvaluator:
                     pair_trial_id = f"match_gen_{imgs[i].name}_{imgs[j].name}"
                     if pair_trial_id in self.completed_trials:
                         continue
+                    self.completed_trials.add(pair_trial_id)
                     try:
                         im1 = Image.open(imgs[i]).convert("RGB")
                         im2 = Image.open(imgs[j]).convert("RGB")
@@ -317,15 +350,17 @@ class DatasetEvaluator:
                             genuine_scores.append(res.similarity_score)
                             matching_trials_evaluated += 1
                             journal_fp.write(json.dumps({"trial_id": pair_trial_id, "score": res.similarity_score}) + "\n")
-                            self.completed_trials.add(pair_trial_id)
                     except Exception as exc:
                         logger.debug("Error in genuine pair: %s", exc)
 
         # B. Impostor Pairs (cross-identity, bounded for balanced benchmark)
         rng = np.random.default_rng(seed=42)
-        impostor_target = min(5000, len(genuine_scores) * 3)
+        impostor_target = min(5000, max(500, len(genuine_scores) * 3))
+        attempts = 0
+        max_attempts = impostor_target * 5
 
-        while len(impostor_scores) < impostor_target and len(identities_list) >= 2:
+        while len(impostor_scores) < impostor_target and len(identities_list) >= 2 and attempts < max_attempts:
+            attempts += 1
             id1, id2 = rng.choice(identities_list, size=2, replace=False)
             img1_path = rng.choice(identity_image_map[id1])
             img2_path = rng.choice(identity_image_map[id2])
@@ -333,6 +368,7 @@ class DatasetEvaluator:
             pair_trial_id = f"match_imp_{img1_path.name}_{img2_path.name}"
             if pair_trial_id in self.completed_trials:
                 continue
+            self.completed_trials.add(pair_trial_id)
 
             try:
                 im1 = Image.open(img1_path).convert("RGB")
@@ -342,7 +378,6 @@ class DatasetEvaluator:
                     impostor_scores.append(res.similarity_score)
                     matching_trials_evaluated += 1
                     journal_fp.write(json.dumps({"trial_id": pair_trial_id, "score": res.similarity_score}) + "\n")
-                    self.completed_trials.add(pair_trial_id)
             except Exception as exc:
                 logger.debug("Error in impostor pair: %s", exc)
 
@@ -482,6 +517,7 @@ class DatasetEvaluator:
                     "pad_roc_auc": round(pad_auc, 4),
                     "confusion_matrix": pad_confusion,
                 },
+                "category_breakdown": category_stats,
             },
         }
 
@@ -599,7 +635,22 @@ class DatasetEvaluator:
 | **Print Attack ($N={pad['total_attacks'] and pad['confusion_matrix'].get('PRINT_ATTACK', {}) and sum(pad['confusion_matrix'].get('PRINT_ATTACK', {}).values())}$)** | {pad['confusion_matrix'].get('PRINT_ATTACK', {}).get('GENUINE', 0)} | {pad['confusion_matrix'].get('PRINT_ATTACK', {}).get('PRINT_ATTACK', 0)} | {pad['confusion_matrix'].get('PRINT_ATTACK', {}).get('SCREEN_REPLAY', 0)} | {pad['confusion_matrix'].get('PRINT_ATTACK', {}).get('DIGITAL_MANIPULATION', 0)} | {pad['confusion_matrix'].get('PRINT_ATTACK', {}).get('UNCERTAIN', 0)} |
 | **Screen Replay ($N={pad['confusion_matrix'].get('SCREEN_REPLAY', {}) and sum(pad['confusion_matrix'].get('SCREEN_REPLAY', {}).values())}$)** | {pad['confusion_matrix'].get('SCREEN_REPLAY', {}).get('GENUINE', 0)} | {pad['confusion_matrix'].get('SCREEN_REPLAY', {}).get('PRINT_ATTACK', 0)} | {pad['confusion_matrix'].get('SCREEN_REPLAY', {}).get('SCREEN_REPLAY', 0)} | {pad['confusion_matrix'].get('SCREEN_REPLAY', {}).get('DIGITAL_MANIPULATION', 0)} | {pad['confusion_matrix'].get('SCREEN_REPLAY', {}).get('UNCERTAIN', 0)} |
 | **Digital Manipulation ($N={pad['confusion_matrix'].get('DIGITAL_MANIPULATION', {}) and sum(pad['confusion_matrix'].get('DIGITAL_MANIPULATION', {}).values())}$)** | {pad['confusion_matrix'].get('DIGITAL_MANIPULATION', {}).get('GENUINE', 0)} | {pad['confusion_matrix'].get('DIGITAL_MANIPULATION', {}).get('PRINT_ATTACK', 0)} | {pad['confusion_matrix'].get('DIGITAL_MANIPULATION', {}).get('SCREEN_REPLAY', 0)} | {pad['confusion_matrix'].get('DIGITAL_MANIPULATION', {}).get('DIGITAL_MANIPULATION', 0)} | {pad['confusion_matrix'].get('DIGITAL_MANIPULATION', {}).get('UNCERTAIN', 0)} |
+
+---
+
+## 6. Category-Specific Stress Testing Breakdown (Categories A through J)
+
+| Code | Category Name | Total Samples | Face Detected Rate | Quality OK Rate |
+| :---: | :--- | :---: | :---: | :---: |
 """
+        cat_stats = r["metrics"].get("category_breakdown", {})
+        for code in sorted(cat_stats.keys()):
+            c_info = cat_stats[code]
+            c_tot = c_info.get("total_samples", 0)
+            det_r = (c_info.get("faces_detected", 0) / c_tot * 100) if c_tot > 0 else 0.0
+            q_r = (c_info.get("quality_ok", 0) / c_tot * 100) if c_tot > 0 else 0.0
+            content += f"| **{code}** | {c_info.get('category_name', code)} | {c_tot} | {det_r:.1f}% | {q_r:.1f}% |\n"
+
         path.write_text(content, encoding="utf-8")
 
 
