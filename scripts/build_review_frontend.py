@@ -629,8 +629,8 @@ def generate_html_dashboard(items: List[Dict[str, Any]], match_demo: Dict[str, A
       localStorage.setItem('facecheck_human_reviews_v1', JSON.stringify(humanReviews));
     }
 
-    // Application State
-    const API_KEY = "fc-prod-secret-key-bank-core-9872";
+    // Application State - Authenticated via session/credentials; no secrets in JS bundle
+    const API_KEY = "";
     let isLiveMode = false;
     let currentPage = 1;
     let pageSize = 10;

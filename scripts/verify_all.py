@@ -76,8 +76,8 @@ def check_evaluation():
 def check_live_api():
     print("\n[4/5] Testing live API endpoints...")
     client = TestClient(app)
-    api_key = "fc-prod-secret-key-bank-core-9872"
     config = get_config()
+    api_key = os.environ.get("FACECHECK_API_KEY") or (config.auth.api_keys[0].key if config.auth.api_keys else "test-key")
     
     # Health
     r_health = client.get("/api/v1/health")
