@@ -153,6 +153,29 @@ def get_learning_stats_endpoint(
     return store.get_learning_stats()
 
 
+@router.get("/review/events")
+def list_review_events_endpoint(
+    page: int = 1,
+    page_size: int = 10,
+    status: Optional[str] = None,
+    verdict: Optional[str] = None,
+    search: Optional[str] = None,
+    sort_desc: bool = True,
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """List paginated biometric KYC review events from PostgreSQL with real-time filters and search."""
+    store = get_learning_store()
+    return store.list_review_events(
+        page=page,
+        page_size=page_size,
+        status=status,
+        verdict=verdict,
+        search=search,
+        sort_desc=sort_desc,
+    )
+
+
 @router.post("/review/export-training-data", response_model=ExportTrainingResponse)
 def export_training_data_endpoint(
     api_key_name: str = Depends(verify_api_key),

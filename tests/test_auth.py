@@ -14,6 +14,12 @@ def test_verify_api_key_valid():
     assert key_name == "bank_core_service"
 
 
+def test_verify_api_key_query_param():
+    valid_key = "fc-prod-secret-key-bank-core-9872"
+    key_name = verify_api_key(api_key=valid_key)
+    assert key_name == "bank_core_service"
+
+
 def test_verify_api_key_missing():
     with pytest.raises(HTTPException) as exc:
         verify_api_key(x_api_key=None)

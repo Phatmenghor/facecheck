@@ -327,6 +327,101 @@ class PostgresLearningStore:
             last_updated=last_row,
         )
 
+    def list_review_events(
+        self,
+        page: int = 1,
+        page_size: int = 10,
+        status: Optional[str] = None,
+        verdict: Optional[str] = None,
+        search: Optional[str] = None,
+        sort_desc: bool = True,
+    ) -> Dict[str, Any]:
+        """Query paginated KYC biometric review events with filters and total counts."""
+        page = max(1, page)
+        page_size = max(1, min(page_size, 200))
+        offset = (page - 1) * page_size
+        where_clauses: List[str] = []
+        params: List[Any] = []
+
+        if status:
+            where_clauses.append("human_status = %s")
+            params.append(status.upper())
+        if verdict:
+            where_clauses.append("llm_verdict = %s")
+            params.append(verdict.upper())
+        if search:
+            where_clauses.append("(sample_id ILIKE %s OR filename ILIKE %s OR scenario ILIKE %s)")
+            params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
+
+        where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+        order_sql = "ORDER BY id DESC" if sort_desc else "ORDER BY id ASC"
+
+        with self._get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                # 1. Total count query
+                count_query = f"SELECT COUNT(*) FROM kyc_review_events {where_sql};"
+                cur.execute(count_query, params)
+                total_count = cur.fetchone()[0]
+
+                # 2. Paginated rows query
+                fetch_query = f"""
+                    SELECT id, sample_id, filename, scenario, sha256, faces_found,
+                           quality_status, laplacian_variance, mean_luminance,
+                           pad_decision, pad_attack_type, pad_risk_score,
+                           match_decision, match_similarity, llm_verdict, llm_risk_score,
+                           llm_summary, llm_guidance, human_status, human_issue_type,
+                           human_notes, auditor_id, created_at, explanation_raw
+                    FROM kyc_review_events
+                    {where_sql}
+                    {order_sql}
+                    LIMIT %s OFFSET %s;
+                """
+                cur.execute(fetch_query, params + [page_size, offset])
+                rows = cur.fetchall()
+
+        events = []
+        for r in rows:
+            events.append({
+                "id": r[0],
+                "sample_id": r[1],
+                "filename": r[2],
+                "scenario": r[3],
+                "sha256": r[4],
+                "faces_found": r[5],
+                "quality_status": r[6],
+                "laplacian_variance": r[7],
+                "mean_luminance": r[8],
+                "pad_decision": r[9],
+                "pad_attack_type": r[10],
+                "pad_risk_score": r[11],
+                "match_decision": r[12],
+                "match_similarity": r[13],
+                "llm_verdict": r[14],
+                "llm_risk_score": r[15],
+                "llm_summary": r[16],
+                "llm_guidance": r[17],
+                "human_status": r[18],
+                "human_issue_type": r[19],
+                "human_notes": r[20],
+                "auditor_id": r[21],
+                "created_at": r[22].isoformat() if hasattr(r[22], "isoformat") else str(r[22]),
+                "explanation_raw": r[23] if isinstance(r[23], dict) else {},
+                "image_url": f"/api/v1/learning/images/{r[1]}",
+            })
+
+        total_pages = max(1, (total_count + page_size - 1) // page_size) if page_size > 0 else 1
+
+        return {
+            "status": "SUCCESS",
+            "total_records": total_count,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1,
+            "events": events,
+        }
+
     # =========================================================================
     # Image Store Repository (100% PostgreSQL Persistence)
     # =========================================================================

@@ -7,7 +7,7 @@ import time
 from collections import defaultdict
 from threading import Lock
 from typing import Dict, List, Optional
-from fastapi import Header, HTTPException, Request, status
+from fastapi import Header, HTTPException, Query, Request, status
 
 from app.config import get_config
 
@@ -31,27 +31,41 @@ def get_client_ip(request: Request) -> str:
 
 
 def verify_api_key(
+    request: Request = None,
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    api_key: Optional[str] = Query(None, alias="api_key"),
 ) -> str:
-    """Verify X-API-Key header in constant time.
+    """Verify X-API-Key header or api_key query param in constant time.
 
     Args:
+        request: FastAPI Request object.
         x_api_key: Value from X-API-Key header.
+        api_key: Value from api_key query parameter (useful for browser media/images).
 
     Returns:
         Name of the authenticated API key.
 
     Raises:
-        HTTPException(401): If header is missing or does not match any configured key.
+        HTTPException(401): If neither header nor query param matches any configured key.
     """
-    if not x_api_key:
+    key_val = None
+    if isinstance(x_api_key, str) and x_api_key.strip():
+        key_val = x_api_key.strip()
+    elif isinstance(api_key, str) and api_key.strip():
+        key_val = api_key.strip()
+    elif request is not None and hasattr(request, "query_params"):
+        q_key = request.query_params.get("api_key") or request.query_params.get("key")
+        if q_key:
+            key_val = q_key.strip()
+
+    if not key_val:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "UNAUTHORIZED", "message": "Missing required 'X-API-Key' header."},
+            detail={"error": "UNAUTHORIZED", "message": "Missing required 'X-API-Key' header or 'api_key' parameter."},
         )
 
     config = get_config()
-    clean_key = x_api_key.strip()
+    clean_key = key_val
 
     for entry in config.security.api_keys:
         # Constant-time comparison prevents timing attacks
