@@ -33,6 +33,18 @@ class DatabaseConfig(BaseModel):
     pool_size: int = 10
 
 
+class LLMConfig(BaseModel):
+    provider: str = "gemini"  # "gemini", "openai", "custom_openai_compatible"
+    api_key: str = ""
+    model: str = "gemini-1.5-flash"
+    base_url: Optional[str] = None
+    temperature: float = 0.2
+    auto_review_enabled: bool = True
+    auto_feedback_enabled: bool = True
+    online_training_url: Optional[str] = None
+    openai_fine_tuning_enabled: bool = True
+
+
 class ServerConfig(BaseModel):
     host: str = "0.0.0.0"
     port: int = 8000
@@ -165,6 +177,7 @@ class AppConfig(BaseModel):
     eval: EvalConfig = Field(default_factory=EvalConfig)
     monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    llm: LLMConfig = Field(default_factory=LLMConfig)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -263,6 +276,32 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
                 parsed_keys.append(ApiKeyEntry(name=f"key_{len(parsed_keys)+1}", key=item))
         if parsed_keys:
             config.security.api_keys = parsed_keys
+
+    # LLM & Online AI Model environment overrides
+    if os.getenv("LLM_PROVIDER"):
+        config.llm.provider = os.environ["LLM_PROVIDER"].lower()
+    if os.getenv("GEMINI_API_KEY"):
+        config.llm.api_key = os.environ["GEMINI_API_KEY"]
+        config.llm.provider = "gemini"
+    elif os.getenv("OPENAI_API_KEY"):
+        config.llm.api_key = os.environ["OPENAI_API_KEY"]
+        config.llm.provider = "openai"
+    elif os.getenv("LLM_API_KEY"):
+        config.llm.api_key = os.environ["LLM_API_KEY"]
+    if os.getenv("LLM_MODEL"):
+        config.llm.model = os.environ["LLM_MODEL"]
+    if os.getenv("LLM_BASE_URL"):
+        config.llm.base_url = os.environ["LLM_BASE_URL"]
+    if os.getenv("LLM_TEMPERATURE"):
+        config.llm.temperature = float(os.environ["LLM_TEMPERATURE"])
+    if os.getenv("LLM_AUTO_REVIEW_ENABLED"):
+        config.llm.auto_review_enabled = os.environ["LLM_AUTO_REVIEW_ENABLED"].lower() in ("true", "1")
+    if os.getenv("LLM_AUTO_FEEDBACK_ENABLED"):
+        config.llm.auto_feedback_enabled = os.environ["LLM_AUTO_FEEDBACK_ENABLED"].lower() in ("true", "1")
+    if os.getenv("LLM_OPENAI_FINE_TUNING_ENABLED"):
+        config.llm.openai_fine_tuning_enabled = os.environ["LLM_OPENAI_FINE_TUNING_ENABLED"].lower() in ("true", "1")
+    if os.getenv("LLM_ONLINE_TRAINING_URL"):
+        config.llm.online_training_url = os.environ["LLM_ONLINE_TRAINING_URL"]
 
     # Enforce offline variables
     if config.server.offline_mode:

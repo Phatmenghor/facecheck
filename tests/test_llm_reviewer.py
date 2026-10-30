@@ -336,3 +336,79 @@ def test_continuous_daemon_api_endpoints():
     assert "heartbeat" in trigger_data
 
 
+def test_auto_review_and_online_sync_endpoints():
+    """Verify autonomous AI auto-review, online sync, and purge endpoints."""
+    from pathlib import Path
+    fixture_path = Path(__file__).resolve().parent / "fixtures" / "valid_face_clean.jpg"
+    with open(fixture_path, "rb") as f:
+        img_bytes = f.read()
+
+    # 1. Test POST /api/v1/learning/auto-review
+    auto_resp = client.post(
+        "/api/v1/learning/auto-review",
+        files={"image": ("test_auto_face.jpg", img_bytes, "image/jpeg")},
+        headers={"X-API-Key": VALID_API_KEY},
+    )
+    assert auto_resp.status_code == 200
+    auto_data = auto_resp.json()
+    assert auto_data["sample_id"].startswith("auto_")
+    assert "verdict" in auto_data["explanation"]
+    assert auto_data["auto_feedback_recorded"] is True
+
+    # 2. Test POST /api/v1/learning/online-sync
+    sync_resp = client.post(
+        "/api/v1/learning/online-sync",
+        headers={"X-API-Key": VALID_API_KEY},
+    )
+    assert sync_resp.status_code == 200
+    sync_data = sync_resp.json()
+    assert "status" in sync_data
+    assert "dataset_file" in sync_data
+
+    # 3. Test POST /api/v1/learning/purge
+    purge_resp = client.post(
+        "/api/v1/learning/purge",
+        headers={"X-API-Key": VALID_API_KEY},
+    )
+    assert purge_resp.status_code == 200
+    purge_data = purge_resp.json()
+    assert purge_data["status"] == "SUCCESS"
+
+
+def test_online_training_jobs_endpoint():
+    """Verify GET /api/v1/learning/online-training/jobs lists sessions and training status."""
+    resp = client.get(
+        "/api/v1/learning/online-training/jobs",
+        headers={"X-API-Key": VALID_API_KEY},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "SUCCESS"
+    assert "provider" in data
+    assert "jobs" in data
+    assert isinstance(data["jobs"], list)
+
+
+def test_check_endpoint_ai_message_and_feedback():
+    """Verify that /api/v1/check returns AI-crafted message response and biometric explanation."""
+    from pathlib import Path
+    fixture_path = Path(__file__).resolve().parent / "fixtures" / "valid_face_clean.jpg"
+    with open(fixture_path, "rb") as f:
+        img_bytes = f.read()
+
+    resp = client.post(
+        "/api/v1/check",
+        files={"image": ("kyc_customer_live.jpg", img_bytes, "image/jpeg")},
+        headers={"X-API-Key": VALID_API_KEY},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "ai_message" in data
+    assert "ai_feedback" in data
+    assert data["ai_message"] is not None
+    assert "Guidance:" in data["ai_message"]
+    assert data["ai_feedback"]["verdict"] in ("ACCEPT", "REJECT", "MANUAL_REVIEW")
+
+
+
+

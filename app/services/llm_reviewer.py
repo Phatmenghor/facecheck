@@ -7,19 +7,28 @@ into clear, actionable executive verdicts, plain-English customer retake guidanc
 and formal regulatory compliance rationales (NIST SP 800-63B & ISO/IEC 30107).
 
 Features:
-- Dual-mode architecture:
-  1. External LLM Provider (e.g., Google Gemini or OpenAI-compatible endpoint when GEMINI_API_KEY / LLM_API_KEY is configured).
-  2. Air-Gapped Biometric Reasoner: High-precision deterministic expert rule tree for strict offline banking environments, zero-latency CI/CD, and total biometric data privacy.
-- Standardized output schema with risk scores, customer-facing guidance, and bank compliance notes.
+- Multi-provider Online AI Architecture:
+  1. Google Gemini (REST / SDK)
+  2. OpenAI / Azure OpenAI / OpenRouter / vLLM (openai client)
+  3. Custom OpenAI-compatible endpoints
+  4. Air-Gapped Biometric Reasoner fallback for zero-latency, offline resiliency, and data privacy.
+- In-Context Few-Shot Retrieval (RAG): Queries PostgreSQL learning store for precedents.
+- Automated Continuous Auto-Review: Ingests new raw images, extracts telemetry, queries AI model, and auto-records feedback to PostgreSQL.
+- Online Fine-Tuning Integration: Exports datasets and triggers remote online training hooks.
 """
 
 from __future__ import annotations
 
+import io
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+from PIL import Image
 from pydantic import BaseModel, Field
+
+from app.config import get_config
 
 logger = logging.getLogger("facecheck.llm_reviewer")
 
@@ -63,7 +72,11 @@ class BiometricReviewExplanation(BaseModel):
     )
     engine_used: str = Field(
         default="BIOMETRIC_REASONER_AIRGAPPED",
-        description="'LLM_ONLINE' or 'BIOMETRIC_REASONER_AIRGAPPED'",
+        description="'LLM_ONLINE_GEMINI', 'LLM_ONLINE_OPENAI', or 'BIOMETRIC_REASONER_AIRGAPPED'",
+    )
+    ai_model_name: Optional[str] = Field(
+        None,
+        description="Name of the online AI model used for the explanation",
     )
 
 
@@ -88,26 +101,390 @@ class BiometricTelemetryInput(BaseModel):
 
 
 class LLMReviewerService:
-    """Service to generate biometric review explanations using cloud LLM or air-gapped deterministic reasoner."""
+    """Service to generate biometric review explanations using online AI models with deterministic fallback."""
 
     def __init__(self, api_key: Optional[str] = None) -> None:
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("LLM_API_KEY")
+        self.config = get_config()
+        self.api_key = api_key or self.config.llm.api_key or os.getenv("GEMINI_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY")
+        self.provider = (self.config.llm.provider or os.getenv("LLM_PROVIDER", "gemini")).lower()
+        self.model = self.config.llm.model or os.getenv("LLM_MODEL", "gemini-1.5-flash")
+        self.base_url = self.config.llm.base_url or os.getenv("LLM_BASE_URL")
 
-    def review(self, telemetry: BiometricTelemetryInput) -> BiometricReviewExplanation:
+    def review(
+        self,
+        telemetry: BiometricTelemetryInput,
+        image_bytes: Optional[bytes] = None,
+    ) -> BiometricReviewExplanation:
         """Produce a comprehensive biometric review explanation.
 
-        Tries external LLM provider if API key is present and configured.
-        Falls back seamlessly to the deterministic air-gapped biometric reasoner.
+        Queries online AI model (Gemini/OpenAI) with multimodal vision support if configured,
+        enriched with RAG precedents from PostgreSQL.
+        Falls back seamlessly to the deterministic biometric reasoner.
         """
         if self.api_key:
             try:
-                explanation = self._query_llm_provider(telemetry)
+                explanation = self._query_online_llm(telemetry, image_bytes=image_bytes)
                 if explanation:
                     return explanation
             except Exception as exc:
-                logger.warning(f"External LLM call failed ({exc}); falling back to deterministic biometric reasoner.")
+                logger.warning("Online AI model call failed (%s); falling back to deterministic biometric reasoner.", exc)
 
         return self._evaluate_airgapped_reasoner(telemetry)
+
+    def _query_online_llm(
+        self,
+        t: BiometricTelemetryInput,
+        image_bytes: Optional[bytes] = None,
+    ) -> Optional[BiometricReviewExplanation]:
+        """Query configured online AI provider with in-context few-shot retrieval and optional multimodal image vision."""
+        import base64
+        from app.services.learning_store import get_learning_store
+        store = get_learning_store()
+        few_shots = store.get_few_shot_examples(t.scenario, limit=2)
+        few_shot_context = ""
+        if few_shots:
+            few_shot_context = (
+                "\nApproved Historical Auditor Precedents for Context:\n"
+                + json.dumps(few_shots, indent=2)
+                + "\n"
+            )
+
+        system_instruction = (
+            "You are the Senior Biometric AI Officer for CP Bank Digital Account Opening KYC. "
+            "Analyze computer vision biometric telemetry (YuNet face detection, Laplacian blur, luminance, "
+            "presentation attack detection PAD, and 1:1 SFace cosine match similarity) strictly for single-customer account opening. "
+            "Examine facial quality, lighting, attack artifacts, and alignment. Output a strict JSON response with exact compliance fields."
+        )
+
+        user_prompt = (
+            f"{few_shot_context}\n"
+            f"Current Telemetry Data:\n{t.model_dump_json(indent=2)}\n\n"
+            "Provide your response matching this exact JSON schema:\n"
+            "{\n"
+            '  "verdict": "ACCEPT" | "REJECT" | "MANUAL_REVIEW",\n'
+            '  "risk_level": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",\n'
+            '  "risk_score": <int 1-100>,\n'
+            '  "summary": "<1-2 sentence non-technical executive explanation>",\n'
+            '  "customer_guidance": "<clear customer retake instruction>",\n'
+            '  "bank_compliance_notes": "<formal regulatory note referencing NIST SP 800-63B / ISO 30107>",\n'
+            '  "flagged_anomalies": ["<tag1>", "<tag2>"],\n'
+            '  "engine_used": "LLM_ONLINE"\n'
+            "}\n"
+            "Return only valid JSON."
+        )
+
+        # Provider 1: OpenAI or OpenAI-compatible endpoint (Multimodal Vision if image_bytes provided)
+        if self.provider in ("openai", "custom_openai_compatible") or "gpt" in self.model.lower():
+            try:
+                import openai
+                client = openai.OpenAI(
+                    api_key=self.api_key,
+                    base_url=self.base_url or None,
+                    timeout=15.0,
+                )
+                if image_bytes:
+                    b64_img = base64.b64encode(image_bytes).decode("utf-8")
+                    user_content: List[Dict[str, Any]] = [
+                        {"type": "text", "text": user_prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{b64_img}",
+                                "detail": "low",
+                            },
+                        },
+                    ]
+                else:
+                    user_content = user_prompt
+
+                response = client.chat.completions.create(
+                    model=self.model or "gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": system_instruction},
+                        {"role": "user", "content": user_content},
+                    ],
+                    temperature=self.config.llm.temperature,
+                    response_format={"type": "json_object"},
+                )
+                raw_text = response.choices[0].message.content or "{}"
+                parsed = json.loads(raw_text)
+                parsed["engine_used"] = "LLM_ONLINE_OPENAI"
+                parsed["ai_model_name"] = self.model
+                parsed["learning_examples_consulted"] = len(few_shots)
+                return BiometricReviewExplanation(**parsed)
+            except Exception as e:
+                logger.debug("OpenAI API call failed: %s", e)
+
+        # Provider 2: Google Gemini REST API (Multimodal Vision if image_bytes provided)
+        try:
+            import httpx
+            gemini_model = self.model if "gemini" in self.model else "gemini-1.5-flash"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={self.api_key}"
+
+            parts: List[Dict[str, Any]] = [{"text": f"{system_instruction}\n\n{user_prompt}"}]
+            if image_bytes:
+                b64_img = base64.b64encode(image_bytes).decode("utf-8")
+                parts.append({
+                    "inline_data": {
+                        "mime_type": "image/jpeg",
+                        "data": b64_img,
+                    }
+                })
+
+            payload = {
+                "contents": [{"parts": parts}],
+                "generationConfig": {
+                    "response_mime_type": "application/json",
+                    "temperature": self.config.llm.temperature,
+                },
+            }
+
+            resp = httpx.post(url, json=payload, timeout=12.0)
+            if resp.status_code == 200:
+                data = resp.json()
+                text = data["candidates"][0]["content"]["parts"][0]["text"]
+                parsed = json.loads(text)
+                parsed["engine_used"] = "LLM_ONLINE_GEMINI"
+                parsed["ai_model_name"] = gemini_model
+                parsed["learning_examples_consulted"] = len(few_shots)
+                return BiometricReviewExplanation(**parsed)
+        except Exception as err:
+            logger.debug("Gemini API call failed: %s", err)
+
+        return None
+
+    def auto_review_image(
+        self,
+        image_input: Union[Path, str, bytes, Image.Image],
+        sample_id: Optional[str] = None,
+        scenario: str = "Digital Account Opening KYC",
+        auto_record_to_db: bool = True,
+    ) -> Dict[str, Any]:
+        """Automatically process an image through CV models, run AI review, and auto-persist feedback to PostgreSQL."""
+        from app.services.validator import validate_and_load_image
+        from app.services.face_detector import get_face_detector
+        from app.services.quality import inspect_image_quality
+        from app.anti_spoofing.pad_service import evaluate_pad
+        from app.services.learning_store import get_learning_store, HumanReviewFeedback
+
+        # Load image
+        raw_bytes: Optional[bytes] = None
+        if isinstance(image_input, Image.Image):
+            pil_img = image_input
+            filename = f"img_{sample_id or 'auto'}.jpg"
+            buf = io.BytesIO()
+            pil_img.save(buf, format="JPEG", quality=90)
+            raw_bytes = buf.getvalue()
+            size_bytes = len(raw_bytes)
+        elif isinstance(image_input, (str, Path)):
+            p = Path(image_input)
+            filename = p.name
+            with open(p, "rb") as f:
+                raw_bytes = f.read()
+            pil_img, _, size_bytes = validate_and_load_image(filename, raw_bytes)
+        elif isinstance(image_input, bytes):
+            raw_bytes = image_input
+            filename = f"upload_{sample_id or 'auto'}.jpg"
+            pil_img, _, size_bytes = validate_and_load_image(filename, raw_bytes)
+        else:
+            raise ValueError(f"Unsupported image input type: {type(image_input)}")
+
+        sid = sample_id or f"auto_{Path(filename).stem}"
+
+        # 1. Computer Vision detection & crops
+        detector = get_face_detector()
+        crops = detector.detect_and_crop(pil_img)
+        face_boxes = [c.box for c in crops]
+
+        # 2. Quality inspection
+        q_res = inspect_image_quality(pil_img, size_bytes, face_boxes)
+
+        # 3. PAD anti-spoofing
+        face_crop_box = face_boxes[0] if face_boxes else None
+        pad_res = evaluate_pad(pil_img, face_crop_box)
+
+        # 4. Assemble telemetry
+        telemetry = BiometricTelemetryInput(
+            image_id=sid,
+            filename=filename,
+            scenario=scenario,
+            faces_found=len(crops),
+            face_boxes=face_boxes,
+            quality_status=q_res.status,
+            quality_issues=q_res.issues,
+            quality_metrics=q_res.metrics,
+            pad_decision=pad_res.decision,
+            pad_attack_type=pad_res.attack_type,
+            pad_spoof_prob=pad_res.spoof_probability,
+            pad_risk_score=pad_res.calibrated_risk,
+        )
+
+        # 5. LLM Explanation Review (with multimodal vision inspection if raw_bytes available)
+        explanation = self.review(telemetry, image_bytes=raw_bytes if isinstance(raw_bytes, bytes) else None)
+
+        # 6. Automated feedback recording to PostgreSQL
+        if auto_record_to_db:
+            store = get_learning_store()
+            # If AI verdict is ACCEPT, record as APPROVED baseline; if REJECT/REVIEW, record with issue tag
+            status_str = "APPROVED" if explanation.verdict == "ACCEPT" else "ALERTED"
+            issue_type_str = None
+            if explanation.flagged_anomalies:
+                issue_type_str = explanation.flagged_anomalies[0]
+            elif explanation.verdict == "REJECT":
+                issue_type_str = "FALSE_NEGATIVE"
+
+            feedback_payload = HumanReviewFeedback(
+                sample_id=sid,
+                filename=filename,
+                scenario=scenario,
+                telemetry=telemetry.model_dump(),
+                llm_explanation=explanation.model_dump(),
+                status=status_str,
+                issue_type=issue_type_str,
+                notes=f"[Autonomous AI Review] {explanation.summary}",
+                auditor_id="ai_autonomous_reviewer_agent",
+            )
+            store.record_feedback(feedback_payload)
+
+        return {
+            "sample_id": sid,
+            "telemetry": telemetry.model_dump(),
+            "explanation": explanation.model_dump(),
+            "auto_feedback_recorded": auto_record_to_db,
+        }
+
+    def trigger_online_training_sync(self, dataset_path: Optional[Path] = None) -> Dict[str, Any]:
+        """Trigger an external online training webhook, OpenAI cloud fine-tuning, or remote job."""
+        import requests
+        import time
+        from app.services.learning_store import get_learning_store
+
+        store = get_learning_store()
+        export_file = store.export_fine_tuning_dataset(dataset_path)
+        stats = store.get_learning_stats()
+        online_url = self.config.llm.online_training_url or os.getenv("LLM_ONLINE_TRAINING_URL")
+
+        # Route 1: Direct OpenAI Fine-Tuning API if provider is OpenAI and API key exists
+        if (self.provider == "openai" or "gpt" in self.model.lower()) and self.api_key and getattr(self.config.llm, "openai_fine_tuning_enabled", True):
+            try:
+                import openai
+                client = openai.OpenAI(api_key=self.api_key, base_url=self.base_url or None, timeout=30.0)
+                with open(export_file, "rb") as df:
+                    file_obj = client.files.create(file=df, purpose="fine-tune")
+
+                target_base_model = "gpt-4o-mini-2024-07-18" if "gpt-4" in self.model else "gpt-3.5-turbo"
+                job = client.fine_tuning.jobs.create(
+                    training_file=file_obj.id,
+                    model=target_base_model,
+                )
+
+                session_id = f"openai_ft_{job.id[:16]}"
+                store.record_training_session(
+                    session_id=session_id,
+                    samples_count=stats.total_records,
+                    convergence_score=1.0,
+                    loss=0.0,
+                    metrics={"job_id": job.id, "status": job.status, "base_model": target_base_model, "file_id": file_obj.id},
+                    model_path=f"openai://{job.id}",
+                    status="DISPATCHED",
+                )
+                logger.info("Successfully dispatched OpenAI cloud fine-tuning job %s with %d samples", job.id, stats.total_records)
+                return {
+                    "status": "ONLINE_TRAINING_SUBMITTED",
+                    "provider": "openai",
+                    "job_id": job.id,
+                    "target_base_model": target_base_model,
+                    "file_id": file_obj.id,
+                    "samples_count": stats.total_records,
+                    "dataset_file": str(export_file),
+                }
+            except Exception as exc:
+                logger.warning("OpenAI fine-tuning dispatch failed (%s); falling back to generic online sync.", exc)
+
+        # Route 2: Remote training webhook / cloud endpoint if configured
+        if online_url:
+            try:
+                with open(export_file, "rb") as df:
+                    headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+                    resp = requests.post(
+                        online_url,
+                        files={"file": ("llm_biometric_finetune.jsonl", df, "application/jsonl")},
+                        data={"purpose": "fine-tune", "model": self.model, "samples": stats.total_records},
+                        headers=headers,
+                        timeout=30,
+                    )
+                    session_id = f"webhook_ft_{int(time.time())}"
+                    store.record_training_session(
+                        session_id=session_id,
+                        samples_count=stats.total_records,
+                        convergence_score=1.0,
+                        loss=0.0,
+                        metrics={"url": online_url, "http_status": resp.status_code},
+                        model_path=online_url,
+                        status="DISPATCHED",
+                    )
+                    return {
+                        "status": "ONLINE_TRIGGERED",
+                        "http_status": resp.status_code,
+                        "response": resp.json() if "application/json" in resp.headers.get("Content-Type", "") else resp.text,
+                        "dataset_file": str(export_file),
+                        "samples_count": stats.total_records,
+                    }
+            except Exception as exc:
+                logger.error("Failed submitting online fine-tuning webhook: %s", exc)
+                return {"status": "FAILED", "error": str(exc), "dataset_file": str(export_file)}
+
+        # Route 3: Online Instruction Fine-Tuning Dataset Synchronized & Ready for Cloud Dispatch
+        session_id = f"online_sync_{int(time.time())}"
+        store.record_training_session(
+            session_id=session_id,
+            samples_count=stats.total_records,
+            convergence_score=1.0,
+            loss=0.0,
+            metrics={"mode": "ONLINE_DATASET_SYNC", "format": "chatml_jsonl", "total_samples": stats.total_records, "provider": self.provider, "model": self.model},
+            model_path=f"online://{self.provider}/{self.model}",
+            status="READY",
+        )
+        return {
+            "status": "ONLINE_SYNC_READY",
+            "message": f"Instruction-tuning dataset synchronized ({stats.total_records} samples). Ready for online fine-tuning on {self.provider} ({self.model}).",
+            "dataset_file": str(export_file),
+            "samples_count": stats.total_records,
+            "provider": self.provider,
+            "target_model": self.model,
+        }
+
+    def get_online_training_jobs(self) -> List[Dict[str, Any]]:
+        """Retrieve recent online training sessions and jobs from the PostgreSQL training ledger."""
+        from app.services.learning_store import get_learning_store
+        store = get_learning_store()
+        jobs: List[Dict[str, Any]] = []
+
+        if store.is_postgresql:
+            try:
+                with store._get_pg_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            SELECT session_id, samples_count, convergence_score, loss, metrics, model_path, status, started_at
+                            FROM kyc_training_sessions
+                            ORDER BY id DESC
+                            LIMIT 10;
+                        """)
+                        rows = cur.fetchall()
+                        for r in rows:
+                            jobs.append({
+                                "session_id": r[0],
+                                "samples_count": r[1],
+                                "convergence_score": r[2],
+                                "loss": r[3],
+                                "metrics": r[4] or {},
+                                "model_path": r[5],
+                                "status": r[6],
+                                "started_at": r[7].isoformat() if hasattr(r[7], "isoformat") else str(r[7]),
+                            })
+            except Exception as exc:
+                logger.warning("Could not fetch online training jobs: %s", exc)
+        return jobs
 
     def _evaluate_airgapped_reasoner(self, t: BiometricTelemetryInput) -> BiometricReviewExplanation:
         """Deterministic, banking-grade biometric reasoning engine.
@@ -302,60 +679,6 @@ class LLMReviewerService:
             flagged_anomalies=anomalies,
             engine_used="BIOMETRIC_REASONER_AIRGAPPED",
         )
-
-    def _query_llm_provider(self, t: BiometricTelemetryInput) -> Optional[BiometricReviewExplanation]:
-        """Query Google Gemini or external LLM API if configured, enriched with historical few-shot memory."""
-        try:
-            import httpx
-            from app.services.learning_store import get_learning_store
-
-            store = get_learning_store()
-            few_shots = store.get_few_shot_examples(t.scenario, limit=2)
-            few_shot_context = ""
-            if few_shots:
-                few_shot_context = (
-                    "\nApproved Historical Auditor Precedents for Context:\n"
-                    + json.dumps(few_shots, indent=2)
-                    + "\n"
-                )
-
-            prompt = (
-                "You are the Chief Biometric AI Officer for CP Bank digital account opening KYC verification. "
-                "Analyze the following computer vision biometric telemetry and output a strict JSON response.\n"
-                f"{few_shot_context}\n"
-                f"Current Telemetry Data:\n{t.model_dump_json(indent=2)}\n\n"
-                "Provide your response matching this exact JSON schema:\n"
-                "{\n"
-                '  "verdict": "ACCEPT" | "REJECT" | "MANUAL_REVIEW",\n'
-                '  "risk_level": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",\n'
-                '  "risk_score": <int 1-100>,\n'
-                '  "summary": "<1-2 sentence non-technical executive explanation>",\n'
-                '  "customer_guidance": "<clear customer retake instruction>",\n'
-                '  "bank_compliance_notes": "<formal regulatory note referencing NIST SP 800-63B / ISO 30107>",\n'
-                '  "flagged_anomalies": ["<tag1>", "<tag2>"],\n'
-                '  "engine_used": "LLM_ONLINE"\n'
-                "}\n"
-                "Return only valid JSON."
-            )
-
-            # Gemini API Endpoint
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
-            payload = {
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"response_mime_type": "application/json"},
-            }
-
-            resp = httpx.post(url, json=payload, timeout=8.0)
-            if resp.status_code == 200:
-                data = resp.json()
-                text = data["candidates"][0]["content"]["parts"][0]["text"]
-                parsed = json.loads(text)
-                parsed["engine_used"] = "LLM_ONLINE"
-                parsed["learning_examples_consulted"] = len(few_shots)
-                return BiometricReviewExplanation(**parsed)
-        except Exception as err:
-            logger.debug(f"LLM provider failed: {err}")
-        return None
 
 
 # Global singleton

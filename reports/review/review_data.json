@@ -63,7 +63,8 @@
         "bank_compliance_notes": "Complies with NIST SP 800-63B and ISO/IEC 19794-5 biometric capture standards. Suitable for baseline enrollment.",
         "flagged_anomalies": [],
         "learning_examples_consulted": 0,
-        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
+        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED",
+        "ai_model_name": null
       },
       "crops_count": 1,
       "face_crops": [
@@ -141,7 +142,8 @@
         "bank_compliance_notes": "Complies with NIST SP 800-63B and ISO/IEC 19794-5 biometric capture standards. Suitable for baseline enrollment.",
         "flagged_anomalies": [],
         "learning_examples_consulted": 0,
-        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
+        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED",
+        "ai_model_name": null
       },
       "crops_count": 1,
       "face_crops": [
@@ -223,7 +225,8 @@
           "DEFOCUS_MOTION_BLUR"
         ],
         "learning_examples_consulted": 0,
-        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
+        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED",
+        "ai_model_name": null
       },
       "crops_count": 1,
       "face_crops": [
@@ -301,7 +304,8 @@
         "bank_compliance_notes": "Complies with NIST SP 800-63B and ISO/IEC 19794-5 biometric capture standards. Suitable for baseline enrollment.",
         "flagged_anomalies": [],
         "learning_examples_consulted": 0,
-        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
+        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED",
+        "ai_model_name": null
       },
       "crops_count": 1,
       "face_crops": [
@@ -435,7 +439,8 @@
           "MULTI_FACE_SCENE"
         ],
         "learning_examples_consulted": 0,
-        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
+        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED",
+        "ai_model_name": null
       },
       "crops_count": 10,
       "face_crops": [
@@ -589,7 +594,8 @@
           "ZERO_FACES_DETECTED"
         ],
         "learning_examples_consulted": 0,
-        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
+        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED",
+        "ai_model_name": null
       },
       "crops_count": 0,
       "face_crops": []
@@ -654,7 +660,8 @@
           "ZERO_FACES_DETECTED"
         ],
         "learning_examples_consulted": 0,
-        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
+        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED",
+        "ai_model_name": null
       },
       "crops_count": 0,
       "face_crops": []
@@ -728,7 +735,8 @@
           "SEVERE_UNDEREXPOSURE"
         ],
         "learning_examples_consulted": 0,
-        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
+        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED",
+        "ai_model_name": null
       },
       "crops_count": 1,
       "face_crops": [
@@ -808,7 +816,8 @@
           "PRINT_PAPER_ARTIFACT"
         ],
         "learning_examples_consulted": 0,
-        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
+        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED",
+        "ai_model_name": null
       },
       "crops_count": 1,
       "face_crops": [
@@ -888,7 +897,8 @@
           "SCREEN_MOIRE_REPLAY"
         ],
         "learning_examples_consulted": 0,
-        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
+        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED",
+        "ai_model_name": null
       },
       "crops_count": 1,
       "face_crops": [
@@ -921,7 +931,8 @@
         "bank_compliance_notes": "Passed 1:1 biometric authentication under NIST SP 800-63B IAL3/AAL3. High-confidence facial match verified.",
         "flagged_anomalies": [],
         "learning_examples_consulted": 0,
-        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
+        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED",
+        "ai_model_name": null
       }
     },
     "impostor": {
@@ -942,7 +953,8 @@
           "IMPOSTOR_CROSS_IDENTITY_MISMATCH"
         ],
         "learning_examples_consulted": 0,
-        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
+        "engine_used": "BIOMETRIC_REASONER_AIRGAPPED",
+        "ai_model_name": null
       }
     }
   }
