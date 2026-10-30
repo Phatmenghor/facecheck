@@ -11,8 +11,26 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import dotenv
 import yaml
 from pydantic import BaseModel, Field
+
+# Load .env file at the project root if present
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+dotenv.load_dotenv(PROJECT_ROOT / ".env")
+
+
+class DatabaseConfig(BaseModel):
+    engine: str = "postgresql"  # "postgresql" or "sqlite"
+    host: str = "127.0.0.1"
+    port: int = 5432
+    dbname: str = "llm_face"
+    username: str = "postgres"
+    password: str = ""
+    connect_timeout: int = 5
+    sqlite_path: str = "storage/learning_store.db"
+    auto_migrate: bool = True
+    pool_size: int = 10
 
 
 class ServerConfig(BaseModel):
@@ -146,6 +164,7 @@ class AppConfig(BaseModel):
     hardening: HardeningConfig = Field(default_factory=HardeningConfig)
     eval: EvalConfig = Field(default_factory=EvalConfig)
     monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -205,7 +224,31 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
     if os.getenv("FACECHECK_SAVE_ENCRYPTED_IMAGES"):
         config.storage.save_encrypted_images = os.environ["FACECHECK_SAVE_ENCRYPTED_IMAGES"].lower() in ("true", "1")
 
-    # API keys from environment variable
+    # Database environment overrides
+    if os.getenv("FACECHECK_DB_ENGINE"):
+        config.database.engine = os.environ["FACECHECK_DB_ENGINE"]
+    if os.getenv("FACECHECK_DB_HOST"):
+        config.database.host = os.environ["FACECHECK_DB_HOST"]
+    if os.getenv("FACECHECK_DB_PORT"):
+        config.database.port = int(os.environ["FACECHECK_DB_PORT"])
+    if os.getenv("FACECHECK_DB_NAME"):
+        config.database.dbname = os.environ["FACECHECK_DB_NAME"]
+    if os.getenv("FACECHECK_DB_USER"):
+        config.database.username = os.environ["FACECHECK_DB_USER"]
+    if os.getenv("FACECHECK_DB_PASSWORD"):
+        config.database.password = os.environ["FACECHECK_DB_PASSWORD"]
+    if os.getenv("FACECHECK_DB_CONNECT_TIMEOUT"):
+        config.database.connect_timeout = int(os.environ["FACECHECK_DB_CONNECT_TIMEOUT"])
+    if os.getenv("FACECHECK_DB_SQLITE_FALLBACK"):
+        config.database.sqlite_path = _resolve_project_path(os.environ["FACECHECK_DB_SQLITE_FALLBACK"])
+    else:
+        config.database.sqlite_path = _resolve_project_path(config.database.sqlite_path)
+
+    # API keys from environment variables
+    single_key = os.getenv("FACECHECK_API_KEY")
+    if single_key and not any(k.key == single_key for k in config.security.api_keys):
+        config.security.api_keys.append(ApiKeyEntry(name="env_api_key", key=single_key))
+
     env_keys = os.getenv("FACECHECK_API_KEYS")
     if env_keys:
         parsed_keys: List[ApiKeyEntry] = []

@@ -78,6 +78,17 @@
       "command": "py -m http.server 8080 --directory reports/review",
       "isBackground": true,
       "problemMatcher": []
+    },
+    {
+      "label": "FaceCheck: Run Continuous Autonomous Learning Daemon",
+      "type": "shell",
+      "command": "py scripts/run_continuous_daemon.py",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
     }
   ]
 }

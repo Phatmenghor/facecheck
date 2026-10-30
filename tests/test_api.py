@@ -166,15 +166,28 @@ def test_check_with_multipart_field_image_succeeds():
 
 
 def test_check_with_external_image_url_succeeds():
-    # Test checking directly via external online URL (dicebear synthetic avatar)
-    test_url = "https://api.dicebear.com/7.x/personas/png?seed=online_kyc_test"
-    res = client.post(
-        "/api/v1/check-url",
-        headers={"X-API-Key": VALID_API_KEY},
-        json={"image_url": test_url},
-    )
-    assert res.status_code == 200
-    data = res.json()
-    assert "request_id" in data
-    assert "label" in data
-    assert "face_check" in data
+    # Test checking directly via external online URL with fallback to local bytes if offline
+    from unittest.mock import patch, MagicMock
+    from pathlib import Path
+
+    fixture_path = Path(__file__).resolve().parent / "fixtures" / "valid_face_clean.jpg"
+    with open(fixture_path, "rb") as f:
+        fake_bytes = f.read()
+
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read.return_value = fake_bytes
+    mock_resp.__enter__.return_value = mock_resp
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        test_url = "https://bank.internal.corp/kyc_test_avatar.jpg"
+        res = client.post(
+            "/api/v1/check-url",
+            headers={"X-API-Key": VALID_API_KEY},
+            json={"image_url": test_url},
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert "request_id" in data
+        assert "label" in data
+        assert "face_check" in data

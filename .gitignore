@@ -13,6 +13,7 @@ master.key
 storage/master.key
 .env
 .env.*
+!.env.example
 *.secret
 
 # 2. Banking Audit Logs & Observability

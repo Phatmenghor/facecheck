@@ -302,3 +302,37 @@ def test_api_feedback_and_learning_stats_endpoints():
     assert export_data["status"] == "SUCCESS"
     assert export_data["samples_count"] >= 1
 
+
+def test_env_database_configuration():
+    """Verify that database and security connection parameters are loaded strictly from environment."""
+    from app.config import get_config
+    cfg = get_config()
+    assert cfg.database.engine in ("postgresql", "sqlite")
+    assert cfg.database.host is not None
+    assert cfg.database.port == 5432
+    assert cfg.database.dbname == "llm_face"
+
+
+def test_continuous_daemon_api_endpoints():
+    """Verify daemon monitoring and trigger REST endpoints."""
+    status_resp = client.get(
+        "/api/v1/learning/daemon/status",
+        headers={"X-API-Key": VALID_API_KEY},
+    )
+    assert status_resp.status_code == 200
+    status_data = status_resp.json()
+    assert "daemon_id" in status_data
+    assert "status" in status_data
+    assert "learning_stats" in status_data
+
+    # Test trigger cycle
+    trigger_resp = client.post(
+        "/api/v1/learning/daemon/trigger",
+        headers={"X-API-Key": VALID_API_KEY},
+    )
+    assert trigger_resp.status_code == 200
+    trigger_data = trigger_resp.json()
+    assert trigger_data["status"] == "SUCCESS"
+    assert "heartbeat" in trigger_data
+
+

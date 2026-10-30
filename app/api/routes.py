@@ -840,4 +840,63 @@ def export_training_data_endpoint(
     )
 
 
+class DaemonStatusResponse(BaseModel):
+    daemon_id: str
+    status: str
+    is_postgresql: bool
+    iterations_count: int
+    training_runs_count: int
+    interval_seconds: int
+    learning_stats: LearningStats
+
+
+@router.get("/learning/daemon/status", response_model=DaemonStatusResponse)
+def get_daemon_status_endpoint(
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Inspect continuous learning daemon status, heartbeats, and database connectivity."""
+    from app.services.continuous_daemon import get_continuous_daemon
+    daemon = get_continuous_daemon()
+    stats = daemon.store.get_learning_stats()
+    return DaemonStatusResponse(
+        daemon_id=daemon.daemon_id,
+        status="ACTIVE" if daemon.running else "STANDBY",
+        is_postgresql=daemon.store.is_postgresql,
+        iterations_count=daemon.iterations_count,
+        training_runs_count=daemon.training_runs_count,
+        interval_seconds=daemon.interval_sec,
+        learning_stats=stats,
+    )
+
+
+@router.post("/learning/daemon/trigger")
+def trigger_daemon_cycle_endpoint(
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Trigger an immediate continuous learning ingestion, fine-tuning export, and catalog cycle."""
+    from app.services.continuous_daemon import get_continuous_daemon
+    daemon = get_continuous_daemon()
+    res = daemon.run_single_iteration()
+    return res
+
+
+@router.post("/learning/daemon/train")
+def trigger_daemon_training_endpoint(
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Trigger an immediate automated model retraining session."""
+    from app.services.continuous_daemon import get_continuous_daemon
+    daemon = get_continuous_daemon()
+    trained, metrics = daemon.trigger_model_training()
+    return {
+        "status": "SUCCESS" if trained else "FAILED",
+        "trained": trained,
+        "metrics": metrics,
+    }
+
+
+
 

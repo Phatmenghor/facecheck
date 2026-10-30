@@ -80,11 +80,29 @@ def verify_model_checksums() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager for startup checks and shutdown cleanup."""
+    import os
+    import asyncio
     config = get_config()
     mode_str = "OFFLINE" if config.server.offline_mode else "ONLINE"
     logger.info("Starting FaceCheck API in %s mode...", mode_str)
     verify_model_checksums()
+
+    # Launch background continuous learning daemon if enabled in .env
+    daemon_future = None
+    if os.getenv("FACECHECK_DAEMON_ENABLED", "false").lower() in ("true", "1"):
+        from app.services.continuous_daemon import get_continuous_daemon
+        daemon = get_continuous_daemon()
+        logger.info("Launching continuous learning background daemon in thread pool...")
+        loop = asyncio.get_running_loop()
+        daemon_future = loop.run_in_executor(None, daemon.run_forever)
+
     yield
+
+    if daemon_future is not None:
+        from app.services.continuous_daemon import get_continuous_daemon
+        logger.info("Stopping continuous learning daemon...")
+        get_continuous_daemon().stop()
+
     logger.info("Shutting down FaceCheck API.")
 
 
