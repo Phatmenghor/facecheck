@@ -59,6 +59,25 @@
       "type": "shell",
       "command": "py scripts/verify_audit_log.py",
       "problemMatcher": []
+    },
+    {
+      "label": "FaceCheck: Open Review Dashboard in Browser",
+      "type": "shell",
+      "command": "start reports/review/index.html",
+      "problemMatcher": []
+    },
+    {
+      "label": "FaceCheck: Build Review Frontend & Evaluate 10 Images",
+      "type": "shell",
+      "command": "py scripts/build_review_frontend.py",
+      "problemMatcher": []
+    },
+    {
+      "label": "FaceCheck: Serve Review Dashboard (HTTP Port 8080)",
+      "type": "shell",
+      "command": "py -m http.server 8080 --directory reports/review",
+      "isBackground": true,
+      "problemMatcher": []
     }
   ]
 }
