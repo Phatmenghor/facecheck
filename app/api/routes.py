@@ -35,6 +35,11 @@ from app.anti_spoofing.challenge import (
     ChallengeSession,
     ChallengeVerificationResult,
 )
+from app.services.llm_reviewer import (
+    get_llm_reviewer,
+    BiometricTelemetryInput,
+    BiometricReviewExplanation,
+)
 
 logger = logging.getLogger("facecheck.api")
 
@@ -680,4 +685,96 @@ def list_models_endpoint(
     ))
 
     return ModelsResponse(models=items)
+
+
+class FullReviewResponse(BaseModel):
+    telemetry: BiometricTelemetryInput
+    explanation: BiometricReviewExplanation
+
+
+@router.post("/review/explain", response_model=FullReviewResponse)
+async def review_explain_endpoint(
+    request: Request,
+    payload: Optional[BiometricTelemetryInput] = None,
+    image: Optional[UploadFile] = File(None),
+    match_image: Optional[UploadFile] = File(None),
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Generate executive LLM biometric review explanations and customer retake guidance.
+
+    Accepts either precomputed telemetry via JSON body or raw image uploads.
+    Supports dual-mode: external LLM when configured, or air-gapped deterministic biometric reasoner.
+    """
+    reviewer = get_llm_reviewer()
+    content_type = request.headers.get("content-type", "")
+
+    # Mode A: JSON Body (telemetry precomputed)
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+            payload = BiometricTelemetryInput(**body)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": "INVALID_JSON", "message": f"Malformed JSON telemetry: {exc}"},
+            )
+        explanation = reviewer.review(payload)
+        return FullReviewResponse(telemetry=payload, explanation=explanation)
+
+    if payload is not None:
+        explanation = reviewer.review(payload)
+        return FullReviewResponse(telemetry=payload, explanation=explanation)
+
+    # Mode B: Direct image upload analysis
+    if image is None or not image.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "BAD_REQUEST", "message": "Either JSON telemetry body or 'image' file upload is required."},
+        )
+
+    raw_bytes = await image.read()
+    try:
+        pil_img, _, size_bytes = validate_and_load_image(image.filename, raw_bytes)
+    except (FileTooLargeError, UnsupportedFileTypeError, InvalidImageError) as err:
+        code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE if isinstance(err, FileTooLargeError) else (
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE if isinstance(err, UnsupportedFileTypeError) else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail={"error": type(err).__name__, "message": str(err)})
+
+    detector = get_face_detector()
+    crops = detector.detect_and_crop(pil_img)
+    face_boxes = [c.box for c in crops]
+
+    q_res = inspect_image_quality(pil_img, size_bytes, face_boxes)
+    pad_res = evaluate_pad(pil_img, face_boxes[0] if face_boxes else None)
+
+    match_res = None
+    if match_image is not None and match_image.filename:
+        match_bytes = await match_image.read()
+        try:
+            match_pil, _, _ = validate_and_load_image(match_image.filename, match_bytes)
+            match_res = compare_faces(pil_img, match_pil)
+        except Exception as exc:
+            logger.warning(f"Secondary match image failed validation: {exc}")
+
+    telemetry = BiometricTelemetryInput(
+        filename=image.filename,
+        faces_found=len(crops),
+        face_boxes=face_boxes,
+        quality_status=q_res.status,
+        quality_issues=q_res.issues,
+        quality_metrics=q_res.metrics,
+        pad_decision=pad_res.decision,
+        pad_attack_type=pad_res.attack_type,
+        pad_spoof_prob=pad_res.spoof_probability,
+        pad_risk_score=pad_res.calibrated_risk,
+        match_decision=match_res.decision if match_res else None,
+        match_similarity=match_res.similarity_score if match_res else None,
+        match_threshold=match_res.threshold if match_res else None,
+    )
+
+    explanation = reviewer.review(telemetry)
+    return FullReviewResponse(telemetry=telemetry, explanation=explanation)
+
 
