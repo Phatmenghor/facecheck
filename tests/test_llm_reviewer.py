@@ -338,10 +338,8 @@ def test_continuous_daemon_api_endpoints():
 
 def test_auto_review_and_online_sync_endpoints():
     """Verify autonomous AI auto-review, online sync, and purge endpoints."""
-    from pathlib import Path
-    fixture_path = Path(__file__).resolve().parent / "fixtures" / "valid_face_clean.jpg"
-    with open(fixture_path, "rb") as f:
-        img_bytes = f.read()
+    from tests.fixtures_helper import get_fixture_bytes
+    img_bytes = get_fixture_bytes("valid_face_clean.jpg")
 
     # 1. Test POST /api/v1/learning/auto-review
     auto_resp = client.post(
@@ -391,10 +389,8 @@ def test_online_training_jobs_endpoint():
 
 def test_check_endpoint_ai_message_and_feedback():
     """Verify that /api/v1/check returns AI-crafted message response and biometric explanation."""
-    from pathlib import Path
-    fixture_path = Path(__file__).resolve().parent / "fixtures" / "valid_face_clean.jpg"
-    with open(fixture_path, "rb") as f:
-        img_bytes = f.read()
+    from tests.fixtures_helper import get_fixture_bytes
+    img_bytes = get_fixture_bytes("valid_face_clean.jpg")
 
     resp = client.post(
         "/api/v1/check",

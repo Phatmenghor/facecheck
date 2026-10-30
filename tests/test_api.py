@@ -14,18 +14,14 @@ VALID_API_KEY = "fc-prod-secret-key-bank-core-9872"
 def create_image_file(fmt: str = "JPEG", size=(150, 150), has_face: bool = False):
     buf = io.BytesIO()
     if has_face:
-        fixture_path = Path(__file__).resolve().parent / "fixtures" / "valid_face_clean.jpg"
-        if fixture_path.is_file():
-            img = Image.open(fixture_path)
+        try:
+            from tests.fixtures_helper import get_fixture_image
+            img = get_fixture_image("valid_face_clean.jpg")
             img.save(buf, format=fmt)
             buf.seek(0)
             return buf
-        ref_path = Path(__file__).resolve().parent.parent / "eval" / "data" / "real" / "portrait_01.jpg"
-        if ref_path.is_file():
-            img = Image.open(ref_path)
-            img.save(buf, format=fmt)
-            buf.seek(0)
-            return buf
+        except Exception:
+            pass
     img = Image.new("RGB", size, color=(140, 100, 80))
     img.save(buf, format=fmt)
     buf.seek(0)
@@ -168,11 +164,9 @@ def test_check_with_multipart_field_image_succeeds():
 def test_check_with_external_image_url_succeeds():
     # Test checking directly via external online URL with fallback to local bytes if offline
     from unittest.mock import patch, MagicMock
-    from pathlib import Path
+    from tests.fixtures_helper import get_fixture_bytes
 
-    fixture_path = Path(__file__).resolve().parent / "fixtures" / "valid_face_clean.jpg"
-    with open(fixture_path, "rb") as f:
-        fake_bytes = f.read()
+    fake_bytes = get_fixture_bytes("valid_face_clean.jpg")
 
     mock_resp = MagicMock()
     mock_resp.status = 200

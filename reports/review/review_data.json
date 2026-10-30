@@ -289,8 +289,8 @@
         },
         "pad_decision": "PASS",
         "pad_attack_type": "GENUINE",
-        "pad_spoof_prob": 0.257,
-        "pad_risk_score": 26,
+        "pad_spoof_prob": 0.272,
+        "pad_risk_score": 27,
         "match_decision": null,
         "match_similarity": null,
         "match_threshold": null
@@ -575,10 +575,10 @@
           "face_count": 0,
           "small_faces_count": 0
         },
-        "pad_decision": "REVIEW",
-        "pad_attack_type": "UNCERTAIN",
-        "pad_spoof_prob": 0.415,
-        "pad_risk_score": 41,
+        "pad_decision": "PASS",
+        "pad_attack_type": "GENUINE",
+        "pad_spoof_prob": 0.137,
+        "pad_risk_score": 14,
         "match_decision": null,
         "match_similarity": null,
         "match_threshold": null
@@ -715,10 +715,10 @@
           "face_count": 1,
           "small_faces_count": 0
         },
-        "pad_decision": "REVIEW",
-        "pad_attack_type": "UNCERTAIN",
-        "pad_spoof_prob": 0.404,
-        "pad_risk_score": 40,
+        "pad_decision": "PASS",
+        "pad_attack_type": "GENUINE",
+        "pad_spoof_prob": 0.25,
+        "pad_risk_score": 25,
         "match_decision": null,
         "match_similarity": null,
         "match_threshold": null
@@ -799,8 +799,8 @@
         },
         "pad_decision": "FAIL",
         "pad_attack_type": "DIGITAL_MANIPULATION",
-        "pad_spoof_prob": 0.964,
-        "pad_risk_score": 96,
+        "pad_spoof_prob": 0.971,
+        "pad_risk_score": 97,
         "match_decision": null,
         "match_similarity": null,
         "match_threshold": null
@@ -808,7 +808,7 @@
       "explanation": {
         "verdict": "REJECT",
         "risk_level": "CRITICAL",
-        "risk_score": 96,
+        "risk_score": 97,
         "summary": "Presentation attack detected: image exhibits paper grain, halftone ink grid, or specular print reflections.",
         "customer_guidance": "Please take a live selfie with your camera directly. Photos of printed pictures or paper documents are not permitted for bank account opening.",
         "bank_compliance_notes": "Adverse PAD finding per ISO/IEC 30107-3 Level 1 physical presentation attack detection.",
@@ -880,8 +880,8 @@
         },
         "pad_decision": "FAIL",
         "pad_attack_type": "DIGITAL_MANIPULATION",
-        "pad_spoof_prob": 0.896,
-        "pad_risk_score": 90,
+        "pad_spoof_prob": 0.823,
+        "pad_risk_score": 82,
         "match_decision": null,
         "match_similarity": null,
         "match_threshold": null
@@ -889,7 +889,7 @@
       "explanation": {
         "verdict": "REJECT",
         "risk_level": "CRITICAL",
-        "risk_score": 90,
+        "risk_score": 82,
         "summary": "Presentation attack detected: digital screen replay frequency grid (moir\u00e9 raster) or monitor bezel glare identified.",
         "customer_guidance": "Please present your face live to the camera. Photos taken from computer monitors, tablets, or phone screens cannot be accepted for bank account opening.",
         "bank_compliance_notes": "Adverse PAD finding per ISO/IEC 30107-3 Level 1 digital screen presentation attack detection.",

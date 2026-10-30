@@ -92,9 +92,10 @@ def benchmark_pipeline(num_iterations: int = 100) -> Dict[str, Any]:
     load_time_deepfake_ms = (time.perf_counter() - t0) * 1000.0
 
     # 2. Per-Operation Latency Profiling
-    fixture_path = FIXTURES_DIR / "valid_face_clean.jpg"
-    assert fixture_path.is_file(), f"Benchmark fixture {fixture_path} not found"
-    test_img = Image.open(fixture_path).convert("RGB")
+    from app.services.learning_store import get_learning_store
+    import io
+    raw_img = get_learning_store().get_image_bytes("valid_face_clean")
+    test_img = Image.open(io.BytesIO(raw_img)).convert("RGB")
     bgr_img = np.array(test_img)[:, :, ::-1].copy()
 
     det_times: List[float] = []

@@ -17,15 +17,14 @@ from app.face_matching.models import (
 from app.face_matching.matcher import compare_faces, FaceMatchResult
 from app.face_matching.align import align_face_5point
 
+from tests.fixtures_helper import get_fixture_image
+
 client = TestClient(app)
 VALID_API_KEY = "fc-prod-secret-key-bank-core-9872"
-FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 
 
 def _load_fixture(name: str) -> Image.Image:
-    path = FIXTURES_DIR / name
-    assert path.is_file(), f"Fixture {name} not found"
-    return Image.open(path).convert("RGB")
+    return get_fixture_image(name).convert("RGB")
 
 
 def _image_to_bytes(img: Image.Image, fmt: str = "JPEG") -> bytes:

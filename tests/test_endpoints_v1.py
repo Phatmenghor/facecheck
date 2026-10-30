@@ -7,15 +7,14 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
+from tests.fixtures_helper import get_fixture_bytes
+
 client = TestClient(app)
 VALID_API_KEY = "fc-prod-secret-key-bank-core-9872"
-FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 
 
 def _load_fixture_bytes(name: str) -> bytes:
-    p = FIXTURES_DIR / name
-    assert p.is_file(), f"Fixture {name} not found"
-    return p.read_bytes()
+    return get_fixture_bytes(name)
 
 
 def test_api_detect_faces_clean_portrait():
