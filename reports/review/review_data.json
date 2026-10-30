@@ -62,6 +62,7 @@
         "customer_guidance": "Your photo meets all banking biometric quality criteria.",
         "bank_compliance_notes": "Complies with NIST SP 800-63B and ISO/IEC 19794-5 biometric capture standards. Suitable for baseline enrollment.",
         "flagged_anomalies": [],
+        "learning_examples_consulted": 0,
         "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
       },
       "crops_count": 1,
@@ -139,6 +140,7 @@
         "customer_guidance": "Your photo meets all banking biometric quality criteria.",
         "bank_compliance_notes": "Complies with NIST SP 800-63B and ISO/IEC 19794-5 biometric capture standards. Suitable for baseline enrollment.",
         "flagged_anomalies": [],
+        "learning_examples_consulted": 0,
         "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
       },
       "crops_count": 1,
@@ -220,6 +222,7 @@
         "flagged_anomalies": [
           "DEFOCUS_MOTION_BLUR"
         ],
+        "learning_examples_consulted": 0,
         "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
       },
       "crops_count": 1,
@@ -297,6 +300,7 @@
         "customer_guidance": "Your photo meets all banking biometric quality criteria.",
         "bank_compliance_notes": "Complies with NIST SP 800-63B and ISO/IEC 19794-5 biometric capture standards. Suitable for baseline enrollment.",
         "flagged_anomalies": [],
+        "learning_examples_consulted": 0,
         "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
       },
       "crops_count": 1,
@@ -430,6 +434,7 @@
         "flagged_anomalies": [
           "MULTI_FACE_SCENE"
         ],
+        "learning_examples_consulted": 0,
         "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
       },
       "crops_count": 10,
@@ -583,6 +588,7 @@
         "flagged_anomalies": [
           "ZERO_FACES_DETECTED"
         ],
+        "learning_examples_consulted": 0,
         "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
       },
       "crops_count": 0,
@@ -647,6 +653,7 @@
         "flagged_anomalies": [
           "ZERO_FACES_DETECTED"
         ],
+        "learning_examples_consulted": 0,
         "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
       },
       "crops_count": 0,
@@ -720,6 +727,7 @@
           "DEFOCUS_MOTION_BLUR",
           "SEVERE_UNDEREXPOSURE"
         ],
+        "learning_examples_consulted": 0,
         "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
       },
       "crops_count": 1,
@@ -799,6 +807,7 @@
         "flagged_anomalies": [
           "PRINT_PAPER_ARTIFACT"
         ],
+        "learning_examples_consulted": 0,
         "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
       },
       "crops_count": 1,
@@ -878,6 +887,7 @@
         "flagged_anomalies": [
           "SCREEN_MOIRE_REPLAY"
         ],
+        "learning_examples_consulted": 0,
         "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
       },
       "crops_count": 1,
@@ -910,6 +920,7 @@
         "customer_guidance": "Identity verification complete. You may proceed to account activation.",
         "bank_compliance_notes": "Passed 1:1 biometric authentication under NIST SP 800-63B IAL3/AAL3. High-confidence facial match verified.",
         "flagged_anomalies": [],
+        "learning_examples_consulted": 0,
         "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
       }
     },
@@ -930,6 +941,7 @@
         "flagged_anomalies": [
           "IMPOSTOR_CROSS_IDENTITY_MISMATCH"
         ],
+        "learning_examples_consulted": 0,
         "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
       }
     }

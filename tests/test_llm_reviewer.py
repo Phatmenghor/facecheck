@@ -229,3 +229,76 @@ def test_api_review_explain_image_upload_endpoint():
     assert "verdict" in data["explanation"]
     assert "customer_guidance" in data["explanation"]
     assert "bank_compliance_notes" in data["explanation"]
+
+
+def test_learning_store_record_and_few_shot(tmp_path):
+    """Verify LearningStore persistence, few-shot retrieval, and dataset export."""
+    from app.services.learning_store import LearningStore, HumanReviewFeedback
+
+    db_path = tmp_path / "test_learning.db"
+    store = LearningStore(db_path=db_path)
+
+    fb = HumanReviewFeedback(
+        sample_id="SAMPLE_TEST_01",
+        scenario="Single Customer KYC Account Opening",
+        status="APPROVED",
+        notes="High-clarity biometric selfie. Customer passed all gates.",
+        telemetry={"faces_found": 1, "quality_status": "OK"},
+        llm_explanation={"verdict": "ACCEPT", "risk_score": 10},
+    )
+    res = store.record_feedback(fb)
+    assert res["status"] == "SUCCESS"
+    assert res["sample_id"] == "SAMPLE_TEST_01"
+
+    few_shots = store.get_few_shot_examples("KYC", limit=1)
+    assert len(few_shots) == 1
+    assert few_shots[0]["sample_id"] == "SAMPLE_TEST_01"
+
+    export_file = tmp_path / "finetune.jsonl"
+    store.export_fine_tuning_dataset(export_file)
+    assert export_file.is_file()
+    assert export_file.stat().st_size > 0
+
+
+def test_api_feedback_and_learning_stats_endpoints():
+    """Verify POST /api/v1/review/feedback and GET /api/v1/review/learning-stats endpoints."""
+    payload = {
+        "sample_id": "API_TEST_SAMPLE_99",
+        "filename": "customer_99_selfie.jpg",
+        "scenario": "Account Opening Mobile Onboarding",
+        "status": "APPROVED",
+        "notes": "Verified by KYC Auditor #4. Customer facial features sharp.",
+        "telemetry": {"faces_found": 1, "quality_status": "OK"},
+        "llm_explanation": {"verdict": "ACCEPT", "risk_score": 8},
+    }
+    resp = client.post(
+        "/api/v1/review/feedback",
+        json=payload,
+        headers={"X-API-Key": VALID_API_KEY},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "SUCCESS"
+    assert data["sample_id"] == "API_TEST_SAMPLE_99"
+    assert data["learning_stats"]["total_records"] >= 1
+
+    # Test GET /api/v1/review/learning-stats
+    stats_resp = client.get(
+        "/api/v1/review/learning-stats",
+        headers={"X-API-Key": VALID_API_KEY},
+    )
+    assert stats_resp.status_code == 200
+    stats = stats_resp.json()
+    assert "total_records" in stats
+    assert "approved_count" in stats
+
+    # Test POST /api/v1/review/export-training-data
+    export_resp = client.post(
+        "/api/v1/review/export-training-data",
+        headers={"X-API-Key": VALID_API_KEY},
+    )
+    assert export_resp.status_code == 200
+    export_data = export_resp.json()
+    assert export_data["status"] == "SUCCESS"
+    assert export_data["samples_count"] >= 1
+

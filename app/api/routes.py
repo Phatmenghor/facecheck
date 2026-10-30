@@ -40,6 +40,11 @@ from app.services.llm_reviewer import (
     BiometricTelemetryInput,
     BiometricReviewExplanation,
 )
+from app.services.learning_store import (
+    get_learning_store,
+    HumanReviewFeedback,
+    LearningStats,
+)
 
 logger = logging.getLogger("facecheck.api")
 
@@ -776,5 +781,63 @@ async def review_explain_endpoint(
 
     explanation = reviewer.review(telemetry)
     return FullReviewResponse(telemetry=telemetry, explanation=explanation)
+
+
+class FeedbackResponse(BaseModel):
+    status: str
+    sample_id: str
+    human_status: str
+    learning_stats: LearningStats
+
+
+@router.post("/review/feedback", response_model=FeedbackResponse)
+def submit_review_feedback_endpoint(
+    payload: HumanReviewFeedback,
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Submit human reviewer feedback / alert to persist in the continuous learning database."""
+    store = get_learning_store()
+    res = store.record_feedback(payload)
+    stats = store.get_learning_stats()
+    return FeedbackResponse(
+        status=res.get("status", "SUCCESS"),
+        sample_id=payload.sample_id,
+        human_status=payload.status,
+        learning_stats=stats,
+    )
+
+
+@router.get("/review/learning-stats", response_model=LearningStats)
+def get_learning_stats_endpoint(
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Inspect continuous learning database statistics and fine-tuning readiness."""
+    store = get_learning_store()
+    return store.get_learning_stats()
+
+
+class ExportTrainingResponse(BaseModel):
+    status: str
+    exported_file: str
+    samples_count: int
+
+
+@router.post("/review/export-training-data", response_model=ExportTrainingResponse)
+def export_training_data_endpoint(
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Export accumulated human review records into an instruction-tuning JSONL dataset for LLM fine-tuning."""
+    store = get_learning_store()
+    exported_path = store.export_fine_tuning_dataset()
+    stats = store.get_learning_stats()
+    return ExportTrainingResponse(
+        status="SUCCESS",
+        exported_file=str(exported_path),
+        samples_count=stats.total_records,
+    )
+
 
 

@@ -1,6 +1,6 @@
 {
-  "evaluation_timestamp": "2026-10-22T09:01:11.604772+00:00",
-  "execution_time_seconds": 7.17,
+  "evaluation_timestamp": "2026-10-22T09:38:47.553287+00:00",
+  "execution_time_seconds": 6.19,
   "overall_status": "BLOCKED_PENDING_APPROVALS",
   "total_gates": 13,
   "passed_gates": 12,
@@ -54,28 +54,28 @@
       "name": "Face Detection Evaluation Gate",
       "status": "PASSED",
       "criteria": "Operational Face Detection Recall >= 95.0% and Non-Face Precision >= 95.0%.",
-      "evidence": "Precision=100.00% (0 false face alarms on non-faces). Operational Clean Recall=100.0% (1014/1014). Total stress-test recall=70.42% (correctly rejected 426 severely degraded/pitch-black stress samples)."
+      "evidence": "Precision=99.69% (0 false face alarms on non-faces). Operational Clean Recall=100.0% (653/653). Total stress-test recall=97.32% (correctly rejected 426 severely degraded/pitch-black stress samples)."
     },
     {
       "gate_id": "GATE-08",
       "name": "Image Quality Assessment Gate",
       "status": "PASSED",
       "criteria": "Image quality flags blur, underexposure, overexposure, and compression with actionable reason codes.",
-      "evidence": "Evaluated 1540 quality trials. Pass rate=72.8%, Mean Laplacian var=1253.56, Mean luminance=190.16."
+      "evidence": "Evaluated 1105 quality trials. Pass rate=85.7%, Mean Laplacian var=1892.97, Mean luminance=109.87."
     },
     {
       "gate_id": "GATE-09",
       "name": "Face Matching & Verification Gate",
       "status": "BLOCKED",
       "criteria": "Calibrated operating threshold established, genuine vs impostor distributions documented, ROC-AUC >= 0.95 on real human benchmark.",
-      "evidence": "Evaluated 1399 genuine + 4197 impostor pairs. On synthetic benchmark, ROC-AUC=0.7833 (EER=28.62% at th=0.8). Gate is BLOCKED awaiting institutional access approval for real-human benchmark (CelebA-Spoof / OULU-NPU)."
+      "evidence": "Evaluated 187 genuine + 561 impostor pairs. On synthetic benchmark, ROC-AUC=0.8523 (EER=19.88% at th=0.1518). Gate is BLOCKED awaiting institutional access approval for real-human benchmark (CelebA-Spoof / OULU-NPU)."
     },
     {
       "gate_id": "GATE-10",
       "name": "Presentation-Attack Detection (PAD) Gate",
       "status": "PASSED",
       "criteria": "Print attack, screen replay, and digital manipulation evaluated; APCER, BPCER, ACER calculated; liveness disclaimer enforced.",
-      "evidence": "Evaluated 600 samples. ACER=50.00%, APCER=0.00%, BPCER=100.00%, ROC-AUC=0.2700."
+      "evidence": "Evaluated 60 samples. ACER=54.44%, APCER=55.56%, BPCER=53.33%, ROC-AUC=0.3356."
     },
     {
       "gate_id": "GATE-11",

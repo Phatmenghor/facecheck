@@ -57,6 +57,10 @@ class BiometricReviewExplanation(BaseModel):
         default_factory=list,
         description="Machine-readable anomaly identifiers (e.g., NO_FACE_FOUND, MULTI_FACE_SCENE, OPTICAL_BLUR).",
     )
+    learning_examples_consulted: int = Field(
+        default=0,
+        description="Number of past human auditor approved decisions retrieved from the learning database.",
+    )
     engine_used: str = Field(
         default="BIOMETRIC_REASONER_AIRGAPPED",
         description="'LLM_ONLINE' or 'BIOMETRIC_REASONER_AIRGAPPED'",
@@ -300,14 +304,26 @@ class LLMReviewerService:
         )
 
     def _query_llm_provider(self, t: BiometricTelemetryInput) -> Optional[BiometricReviewExplanation]:
-        """Query Google Gemini or external LLM API if configured."""
+        """Query Google Gemini or external LLM API if configured, enriched with historical few-shot memory."""
         try:
             import httpx
+            from app.services.learning_store import get_learning_store
+
+            store = get_learning_store()
+            few_shots = store.get_few_shot_examples(t.scenario, limit=2)
+            few_shot_context = ""
+            if few_shots:
+                few_shot_context = (
+                    "\nApproved Historical Auditor Precedents for Context:\n"
+                    + json.dumps(few_shots, indent=2)
+                    + "\n"
+                )
 
             prompt = (
-                "You are the Chief Biometric AI Officer for a tier-1 retail bank. "
+                "You are the Chief Biometric AI Officer for CP Bank digital account opening KYC verification. "
                 "Analyze the following computer vision biometric telemetry and output a strict JSON response.\n"
-                f"Telemetry Data:\n{t.model_dump_json(indent=2)}\n\n"
+                f"{few_shot_context}\n"
+                f"Current Telemetry Data:\n{t.model_dump_json(indent=2)}\n\n"
                 "Provide your response matching this exact JSON schema:\n"
                 "{\n"
                 '  "verdict": "ACCEPT" | "REJECT" | "MANUAL_REVIEW",\n'
@@ -335,6 +351,7 @@ class LLMReviewerService:
                 text = data["candidates"][0]["content"]["parts"][0]["text"]
                 parsed = json.loads(text)
                 parsed["engine_used"] = "LLM_ONLINE"
+                parsed["learning_examples_consulted"] = len(few_shots)
                 return BiometricReviewExplanation(**parsed)
         except Exception as err:
             logger.debug(f"LLM provider failed: {err}")

@@ -97,10 +97,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["X-XSS-Protection"] = "1; mode=block"
 
-        # Allow local scripts and styles for offline Swagger UI documentation
+        # Allow local scripts and styles for offline Swagger UI documentation and review reports
         if request.url.path.startswith("/docs") or request.url.path.startswith("/static"):
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+            )
+        elif request.url.path.startswith("/reports"):
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self' https: data: blob: 'unsafe-inline'; script-src 'self' https: 'unsafe-inline'; style-src 'self' https: 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' http:;"
             )
         else:
             response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none';"
@@ -132,6 +136,12 @@ def create_app() -> FastAPI:
     if static_dir.is_dir():
         from fastapi.staticfiles import StaticFiles
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+    # Mount reports directory for review dashboard
+    reports_dir = project_root / "reports"
+    if reports_dir.is_dir():
+        from fastapi.staticfiles import StaticFiles
+        app.mount("/reports", StaticFiles(directory=str(reports_dir)), name="reports")
 
     # Offline Swagger UI documentation endpoint (zero external CDN calls)
     if docs_enabled:
