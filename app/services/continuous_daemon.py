@@ -114,19 +114,28 @@ class ContinuousLearningDaemon:
         }
 
     def _catalog_available_images(self) -> int:
-        """Scan candidate image folders and catalog new images into kyc_dataset_manifest."""
+        """Catalog images from PostgreSQL kyc_image_store and active candidate assets into kyc_dataset_manifest."""
         if not self.store.is_postgresql:
             return 0
 
-        candidate_dirs = [
-            PROJECT_ROOT / "assets" / "review_10" / "images",
-            PROJECT_ROOT / "tests" / "fixtures",
-        ]
         new_cataloged = 0
-
         try:
             with self.store._get_pg_connection() as conn:
                 with conn.cursor() as cur:
+                    # 1. Catalog all images stored directly in PostgreSQL kyc_image_store
+                    cur.execute("""
+                        INSERT INTO kyc_dataset_manifest (
+                            sample_id, filename, scenario, target_category, storage_path, labeled_status
+                        )
+                        SELECT sample_id, filename, scenario, target_category,
+                               'database://kyc_image_store/' || sample_id, 'PENDING_REVIEW'
+                        FROM kyc_image_store
+                        ON CONFLICT (sample_id) DO NOTHING;
+                    """)
+                    new_cataloged += cur.rowcount
+
+                    # 2. Check any remaining test fixtures if present
+                    candidate_dirs = [PROJECT_ROOT / "tests" / "fixtures"]
                     for cdir in candidate_dirs:
                         if not cdir.is_dir():
                             continue
@@ -134,7 +143,7 @@ class ContinuousLearningDaemon:
                             if img_p.suffix.lower() not in (".jpg", ".jpeg", ".png", ".webp"):
                                 continue
                             sample_id = f"img_{img_p.stem}"
-                            rel_path = str(img_p.relative_to(PROJECT_ROOT))
+                            rel_path = str(img_p.resolve().relative_to(PROJECT_ROOT.resolve()))
                             cur.execute("""
                                 INSERT INTO kyc_dataset_manifest (
                                     sample_id, filename, scenario, target_category, storage_path, labeled_status
@@ -178,14 +187,21 @@ class ContinuousLearningDaemon:
 
         for row in unreviewed:
             sample_id, filename, rel_path = row[0], row[1], row[2]
-            abs_path = PROJECT_ROOT / rel_path
-            if not abs_path.is_file():
-                continue
+
+            # 1. First retrieve image bytes directly from PostgreSQL kyc_image_store
+            img_input: Any = self.store.get_image_bytes(sample_id)
+            if not img_input:
+                abs_path = PROJECT_ROOT / rel_path
+                if abs_path.is_file():
+                    img_input = abs_path
+                else:
+                    logger.debug("Unreviewed sample %s has no bytes in DB or disk; skipping.", sample_id)
+                    continue
 
             try:
                 # Execute automated review & auto-record feedback into PostgreSQL
                 res = reviewer.auto_review_image(
-                    image_input=abs_path,
+                    image_input=img_input,
                     sample_id=sample_id,
                     scenario="Autonomous Ingestion KYC Review",
                     auto_record_to_db=True,

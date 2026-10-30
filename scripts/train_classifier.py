@@ -71,7 +71,7 @@ class AuditedTrainingSample:
 
 
 def audit_training_image(
-    file_path: Path,
+    file_or_data: Any,
     expected_label: int,
 ) -> Tuple[bool, Optional[AuditedTrainingSample], str]:
     """Execute 100% offline pre-flight security, quality, and face verification.
@@ -80,13 +80,19 @@ def audit_training_image(
         (passed, sample_or_none, failure_reason)
     """
     label_name = "REAL" if expected_label == 0 else "FAKE"
-    filename = file_path.name
-
-    # 1. Read binary bytes locally (offline)
-    try:
-        raw_bytes = file_path.read_bytes()
-    except Exception as exc:
-        return False, None, f"Disk Read Failed: {exc}"
+    if isinstance(file_or_data, tuple):
+        # Tuple format: (display_name, raw_bytes, filename)
+        filename = file_or_data[2] if len(file_or_data) > 2 else file_or_data[0]
+        raw_bytes = file_or_data[1]
+    elif isinstance(file_or_data, Path):
+        filename = file_or_data.name
+        try:
+            raw_bytes = file_or_data.read_bytes()
+        except Exception as exc:
+            return False, None, f"Disk Read Failed: {exc}"
+    else:
+        filename = "candidate.jpg"
+        raw_bytes = bytes(file_or_data)
 
     # 2. Hardened security validation (magic bytes, polyglots, bombs, trailing data)
     try:
@@ -233,10 +239,31 @@ def train_model() -> None:
                     if any(kw in p.name.lower() for kw in ["print", "halftone", "screen", "moire", "synthetic", "fake"]):
                         fake_files.append(p)
 
+    real_candidates: List[Any] = list(real_files)
+    fake_candidates: List[Any] = list(fake_files)
+
+    # Database-first image discovery from PostgreSQL kyc_image_store (zero local file reliance)
+    try:
+        from app.services.learning_store import get_learning_store
+        store = get_learning_store()
+        with store._get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT sample_id, filename, image_bytes, target_category FROM kyc_image_store;")
+                for r in cur.fetchall():
+                    s_id, fn, b_data, cat = r[0], r[1], r[2], (r[3] or "")
+                    raw_b = b_data.tobytes() if hasattr(b_data, "tobytes") else bytes(b_data)
+                    display_name = f"database://kyc_image_store/{s_id}"
+                    if any(kw in fn.lower() or kw in cat.lower() for kw in ["obama", "merkel", "valid_face", "genuine", "clean"]):
+                        real_candidates.append((display_name, raw_b, fn))
+                    elif any(kw in fn.lower() or kw in cat.lower() for kw in ["print", "halftone", "screen", "moire", "impostor", "fake"]):
+                        fake_candidates.append((display_name, raw_b, fn))
+    except Exception as exc:
+        pass
+
     print(f"\n[PHASE 1: PRE-FLIGHT 100% SECURITY & FACE INTEGRITY AUDIT]")
     print(f"Discovered training candidates:")
-    print(f"  - Authentic Real Faces:    {len(real_files)} candidate files")
-    print(f"  - Synthetic AI Faces:      {len(fake_files)} candidate files")
+    print(f"  - Authentic Real Faces:    {len(real_candidates)} candidate items")
+    print(f"  - Synthetic AI Faces:      {len(fake_candidates)} candidate items")
 
     print("\n" + "-" * 90)
     print(f"{'GROUP FOLDER / IMAGE FILE':<42} | {'CLASS':<6} | {'SECURITY':<8} | {'FACE':<5} | {'STATUS'}")
@@ -247,13 +274,16 @@ def train_model() -> None:
     passed_audits = 0
 
     # Audit Real Images
-    for r_file in real_files:
+    for r_item in real_candidates:
         total_audited += 1
-        try:
-            rel_str = str(r_file.relative_to(root_dir)).replace("\\", "/")
-        except Exception:
-            rel_str = r_file.name
-        passed, sample, reason = audit_training_image(r_file, expected_label=0)
+        if isinstance(r_item, tuple):
+            rel_str = r_item[0]
+        else:
+            try:
+                rel_str = str(r_item.relative_to(root_dir)).replace("\\", "/")
+            except Exception:
+                rel_str = r_item.name
+        passed, sample, reason = audit_training_image(r_item, expected_label=0)
         face_status = "YES" if (sample and sample.face_box) else "NO"
         sec_status = "PASS" if passed else "FAIL"
         res_str = "ACCEPTED" if passed else "REJECTED"
@@ -266,13 +296,16 @@ def train_model() -> None:
             print(f"   -> [REASON] {reason}")
 
     # Audit Fake Images
-    for f_file in fake_files:
+    for f_item in fake_candidates:
         total_audited += 1
-        try:
-            rel_str = str(f_file.relative_to(root_dir)).replace("\\", "/")
-        except Exception:
-            rel_str = f_file.name
-        passed, sample, reason = audit_training_image(f_file, expected_label=1)
+        if isinstance(f_item, tuple):
+            rel_str = f_item[0]
+        else:
+            try:
+                rel_str = str(f_item.relative_to(root_dir)).replace("\\", "/")
+            except Exception:
+                rel_str = f_item.name
+        passed, sample, reason = audit_training_image(f_item, expected_label=1)
         face_status = "YES" if (sample and sample.face_box) else "NO"
         sec_status = "PASS" if passed else "FAIL"
         res_str = "ACCEPTED" if passed else "REJECTED"

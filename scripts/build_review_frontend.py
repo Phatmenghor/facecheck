@@ -35,6 +35,7 @@ from app.services.quality import inspect_image_quality
 from app.anti_spoofing.pad_service import evaluate_pad
 from app.face_matching.matcher import compare_faces
 from app.services.llm_reviewer import get_llm_reviewer, BiometricTelemetryInput
+from app.services.learning_store import get_learning_store
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("build_review_frontend")
@@ -95,15 +96,23 @@ def process_review_items() -> List[Dict[str, Any]]:
 
     logger.info(f"Processing {len(items)} items through CV and LLM pipelines...")
 
+    store = get_learning_store()
     for item in items:
         filename = item["filename"]
-        img_path = IMAGES_DIR / filename
-        if not img_path.exists():
-            logger.warning(f"File missing: {img_path}")
-            continue
+        sample_stem = Path(filename).stem
+        sample_id = item.get("id", sample_stem)
 
-        raw_bytes = img_path.read_bytes()
-        pil_img = Image.open(img_path)
+        # Fetch image bytes directly from PostgreSQL kyc_image_store (zero local file dependency)
+        raw_bytes = store.get_image_bytes(sample_stem) or store.get_image_bytes(sample_id)
+        if not raw_bytes:
+            img_path = IMAGES_DIR / filename
+            if img_path.exists():
+                raw_bytes = img_path.read_bytes()
+            else:
+                logger.warning(f"Image not found in PostgreSQL or disk: {sample_id} ({sample_stem})")
+                continue
+
+        pil_img = Image.open(io.BytesIO(raw_bytes))
         w, h = pil_img.size
 
         # 1. Detection
@@ -158,17 +167,26 @@ def process_review_items() -> List[Dict[str, Any]]:
 
 
 def compute_matching_demos(processed_items: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Compute 1:1 facial matching demonstrations for the review frontend."""
-    img_obama1_path = IMAGES_DIR / "img_01_barack_obama_ref.jpg"
-    img_obama2_path = IMAGES_DIR / "img_02_barack_obama_match.jpg"
-    img_jobs_path = IMAGES_DIR / "img_03_steve_jobs_impostor.jpg"
+    """Compute 1:1 facial matching demonstrations directly from PostgreSQL image records."""
+    store = get_learning_store()
 
-    if not (img_obama1_path.exists() and img_obama2_path.exists() and img_jobs_path.exists()):
-        return {}
+    # Load binary bytes directly from PostgreSQL
+    b1 = store.get_image_bytes("img_01_barack_obama_ref")
+    b2 = store.get_image_bytes("img_02_barack_obama_match")
+    b3 = store.get_image_bytes("img_03_steve_jobs_impostor")
 
-    im1 = Image.open(img_obama1_path)
-    im2 = Image.open(img_obama2_path)
-    im3 = Image.open(img_jobs_path)
+    if not (b1 and b2 and b3):
+        # Fallback to local files if present
+        p1 = IMAGES_DIR / "img_01_barack_obama_ref.jpg"
+        p2 = IMAGES_DIR / "img_02_barack_obama_match.jpg"
+        p3 = IMAGES_DIR / "img_03_steve_jobs_impostor.jpg"
+        if not (p1.exists() and p2.exists() and p3.exists()):
+            return {}
+        b1, b2, b3 = p1.read_bytes(), p2.read_bytes(), p3.read_bytes()
+
+    im1 = Image.open(io.BytesIO(b1))
+    im2 = Image.open(io.BytesIO(b2))
+    im3 = Image.open(io.BytesIO(b3))
 
     match_genuine = compare_faces(im1, im2)
     match_impostor = compare_faces(im1, im3)

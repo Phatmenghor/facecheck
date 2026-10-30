@@ -21,14 +21,13 @@ dotenv.load_dotenv(PROJECT_ROOT / ".env")
 
 
 class DatabaseConfig(BaseModel):
-    engine: str = "postgresql"  # "postgresql" or "sqlite"
+    engine: str = "postgresql"
     host: str = "127.0.0.1"
     port: int = 5432
     dbname: str = "llm_face"
     username: str = "postgres"
     password: str = ""
     connect_timeout: int = 5
-    sqlite_path: str = "storage/learning_store.db"
     auto_migrate: bool = True
     pool_size: int = 10
 
@@ -252,10 +251,6 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
         config.database.password = os.environ["FACECHECK_DB_PASSWORD"]
     if os.getenv("FACECHECK_DB_CONNECT_TIMEOUT"):
         config.database.connect_timeout = int(os.environ["FACECHECK_DB_CONNECT_TIMEOUT"])
-    if os.getenv("FACECHECK_DB_SQLITE_FALLBACK"):
-        config.database.sqlite_path = _resolve_project_path(os.environ["FACECHECK_DB_SQLITE_FALLBACK"])
-    else:
-        config.database.sqlite_path = _resolve_project_path(config.database.sqlite_path)
 
     # API keys from environment variables
     single_key = os.getenv("FACECHECK_API_KEY")
