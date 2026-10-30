@@ -72,7 +72,23 @@ def evaluate_pad(
     # 3. Digital Manipulation / Deepfake Classifier
     detector = get_detector()
     try:
-        digital_score = float(detector.predict(pil_image))
+        if face_box and len(face_box) == 4:
+            fx, fy, fw, fh = face_box
+            w_img, h_img = pil_image.size
+            mx, my = int(fw * 0.2), int(fh * 0.2)
+            crop_box = (
+                max(0, fx - mx),
+                max(0, fy - my),
+                min(w_img, fx + fw + mx),
+                min(h_img, fy + fh + my),
+            )
+            if crop_box[2] > crop_box[0] + 10 and crop_box[3] > crop_box[1] + 10:
+                eval_img = pil_image.crop(crop_box)
+            else:
+                eval_img = pil_image
+        else:
+            eval_img = pil_image
+        digital_score = float(detector.predict(eval_img))
     except Exception as exc:
         logger.warning("Digital manipulation detector failed: %s", exc)
         digital_score = 0.50

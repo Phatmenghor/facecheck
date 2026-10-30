@@ -198,6 +198,7 @@ class LLMReviewerService:
         # -------------------------------------------------------------
         pad_attack = (t.pad_attack_type or "GENUINE").upper()
         pad_risk = t.pad_risk_score or 20
+        pad_dec = (t.pad_decision or "PASS").upper()
 
         if pad_attack == "PRINT_ATTACK" or (t.scenario and "PRINT" in t.scenario.upper()):
             anomalies.append("PRINT_PAPER_ARTIFACT")
@@ -206,7 +207,7 @@ class LLMReviewerService:
                 risk_level="CRITICAL",
                 risk_score=pad_risk if pad_risk > 65 else 85,
                 summary="Presentation attack detected: image exhibits paper grain, halftone ink grid, or specular print reflections.",
-                customer_guidance="Please take a live selfie with your camera directly. Photos of printed pictures or paper documents are not permitted.",
+                customer_guidance="Please take a live selfie with your camera directly. Photos of printed pictures or paper documents are not permitted for bank account opening.",
                 bank_compliance_notes="Adverse PAD finding per ISO/IEC 30107-3 Level 1 physical presentation attack detection.",
                 flagged_anomalies=anomalies,
                 engine_used="BIOMETRIC_REASONER_AIRGAPPED",
@@ -219,8 +220,34 @@ class LLMReviewerService:
                 risk_level="CRITICAL",
                 risk_score=pad_risk if pad_risk > 65 else 82,
                 summary="Presentation attack detected: digital screen replay frequency grid (moiré raster) or monitor bezel glare identified.",
-                customer_guidance="Please present your face live to the camera. Photos taken from computer monitors, tablets, or phone screens cannot be accepted.",
+                customer_guidance="Please present your face live to the camera. Photos taken from computer monitors, tablets, or phone screens cannot be accepted for bank account opening.",
                 bank_compliance_notes="Adverse PAD finding per ISO/IEC 30107-3 Level 1 digital screen presentation attack detection.",
+                flagged_anomalies=anomalies,
+                engine_used="BIOMETRIC_REASONER_AIRGAPPED",
+            )
+
+        if pad_attack == "DIGITAL_MANIPULATION" or (pad_dec == "FAIL" and pad_risk >= 65):
+            anomalies.append("DIGITAL_MANIPULATION_DETECTED")
+            return BiometricReviewExplanation(
+                verdict="REJECT",
+                risk_level="CRITICAL",
+                risk_score=pad_risk if pad_risk > 65 else 85,
+                summary="Presentation attack detected: digital screen replay or synthetic manipulation artifacts identified by forensic analysis.",
+                customer_guidance="Please present your live face directly to your device camera. Screen replays or digital reproductions are strictly prohibited for bank account opening.",
+                bank_compliance_notes="Rejected per ISO/IEC 30107-3 Presentation Attack Detection standards. Forensic probe detected anomalous frequency and color gradient distribution.",
+                flagged_anomalies=anomalies,
+                engine_used="BIOMETRIC_REASONER_AIRGAPPED",
+            )
+
+        if pad_dec == "REVIEW" and pad_risk >= 50:
+            anomalies.append("SUSPICIOUS_PRESENTATION_ARTIFACTS")
+            return BiometricReviewExplanation(
+                verdict="MANUAL_REVIEW",
+                risk_level="HIGH",
+                risk_score=pad_risk,
+                summary=f"Presentation attack assessment returned suspicious indicators (Risk: {pad_risk}/100). Manual KYC officer adjudication required.",
+                customer_guidance="Your selfie requires additional verification. Please hold your camera at eye level in natural daylight and take another photo.",
+                bank_compliance_notes="Flagged under ISO/IEC 30107-3 PAD operational security policy. Referred to KYC compliance officer for secondary review.",
                 flagged_anomalies=anomalies,
                 engine_used="BIOMETRIC_REASONER_AIRGAPPED",
             )

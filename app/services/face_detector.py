@@ -108,6 +108,10 @@ class YuNetDetector:
             except Exception as exc:
                 logger.warning("YuNet inference failed: %s", exc)
 
+        # Deduplicate overlapping ghost boxes (common in multi-scale anchor activations)
+        if len(detected_faces) > 1:
+            detected_faces = self._deduplicate_face_boxes(detected_faces)
+
         # If no faces detected with YuNet or model missing, check fallback
         if not detected_faces and self._detector is None:
             fallback_boxes = self._fallback_detect(pil_image, img_w, img_h)
@@ -140,6 +144,48 @@ class YuNetDetector:
                 face_crops.append(FaceCrop(crop=crop_img, box=[x, y, w, h], confidence=conf, landmarks=lm))
 
         return face_crops
+
+    @staticmethod
+    def _deduplicate_face_boxes(
+        faces: List[Tuple[int, int, int, int, float, List[Tuple[float, float]]]],
+    ) -> List[Tuple[int, int, int, int, float, List[Tuple[float, float]]]]:
+        """Suppress duplicate ghost detections from multi-scale neural feature activations."""
+        # Sort by confidence descending
+        sorted_faces = sorted(faces, key=lambda f: f[4], reverse=True)
+        kept: List[Tuple[int, int, int, int, float, List[Tuple[float, float]]]] = []
+
+        for f in sorted_faces:
+            x, y, w, h, conf, lms = f
+            is_dup = False
+            for kx, ky, kw, kh, kconf, klms in kept:
+                # Compute intersection area
+                x1 = max(x, kx)
+                y1 = max(y, ky)
+                x2 = min(x + w, kx + kw)
+                y2 = min(y + h, ky + kh)
+                inter_w = max(0, x2 - x1)
+                inter_h = max(0, y2 - y1)
+                inter_area = inter_w * inter_h
+                min_box_area = min(w * h, kw * kh)
+
+                # If intersection covers > 15% of smaller box area
+                if min_box_area > 0 and (inter_area / min_box_area) > 0.15:
+                    is_dup = True
+                    break
+
+                # Check if either eye landmark falls inside existing kept box
+                if len(lms) >= 2:
+                    re, le = lms[0], lms[1]
+                    if (kx <= re[0] <= kx + kw and ky <= re[1] <= ky + kh) or (
+                        kx <= le[0] <= kx + kw and ky <= le[1] <= ky + kh
+                    ):
+                        is_dup = True
+                        break
+
+            if not is_dup:
+                kept.append(f)
+
+        return kept
 
     def _fallback_detect(
         self,

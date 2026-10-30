@@ -46,10 +46,10 @@
           "face_count": 1,
           "small_faces_count": 0
         },
-        "pad_decision": "FAIL",
-        "pad_attack_type": "DIGITAL_MANIPULATION",
-        "pad_spoof_prob": 0.905,
-        "pad_risk_score": 91,
+        "pad_decision": "PASS",
+        "pad_attack_type": "GENUINE",
+        "pad_spoof_prob": 0.25,
+        "pad_risk_score": 25,
         "match_decision": null,
         "match_similarity": null,
         "match_threshold": null
@@ -123,10 +123,10 @@
           "face_count": 1,
           "small_faces_count": 0
         },
-        "pad_decision": "FAIL",
-        "pad_attack_type": "DIGITAL_MANIPULATION",
-        "pad_spoof_prob": 0.914,
-        "pad_risk_score": 91,
+        "pad_decision": "PASS",
+        "pad_attack_type": "GENUINE",
+        "pad_spoof_prob": 0.25,
+        "pad_risk_score": 25,
         "match_decision": null,
         "match_similarity": null,
         "match_threshold": null
@@ -202,10 +202,10 @@
           "face_count": 1,
           "small_faces_count": 0
         },
-        "pad_decision": "REVIEW",
-        "pad_attack_type": "UNCERTAIN",
-        "pad_spoof_prob": 0.596,
-        "pad_risk_score": 60,
+        "pad_decision": "PASS",
+        "pad_attack_type": "GENUINE",
+        "pad_spoof_prob": 0.25,
+        "pad_risk_score": 25,
         "match_decision": null,
         "match_similarity": null,
         "match_threshold": null
@@ -260,19 +260,13 @@
         "image_id": "IMG_04",
         "filename": "img_04_angela_merkel_clean.jpg",
         "scenario": "Female Bona Fide Portrait",
-        "faces_found": 2,
+        "faces_found": 1,
         "face_boxes": [
           [
             458,
             682,
             516,
             611
-          ],
-          [
-            833,
-            445,
-            534,
-            560
           ]
         ],
         "quality_status": "OK",
@@ -284,7 +278,7 @@
           "mean_luminance": 99.55,
           "compression_ratio": 0.10128,
           "blockiness_index": 1.11,
-          "face_count": 2,
+          "face_count": 1,
           "small_faces_count": 0
         },
         "pad_decision": "PASS",
@@ -296,18 +290,16 @@
         "match_threshold": null
       },
       "explanation": {
-        "verdict": "MANUAL_REVIEW",
-        "risk_level": "MEDIUM",
-        "risk_score": 60,
-        "summary": "Multiple faces (2) were detected in the capture area, creating subject ambiguity.",
-        "customer_guidance": "Multiple people were detected in your picture. Please ensure you are the only person in the frame and retake your selfie in a private setting.",
-        "bank_compliance_notes": "Flagged under ISO/IEC 19794-5 single-subject mandate. Requires manual officer adjudication to establish primary subject identity.",
-        "flagged_anomalies": [
-          "MULTI_FACE_SCENE"
-        ],
+        "verdict": "ACCEPT",
+        "risk_level": "LOW",
+        "risk_score": 10,
+        "summary": "Clean bona fide KYC portrait: single subject localized, optimal lighting and sharpness, no presentation artifacts.",
+        "customer_guidance": "Your photo meets all banking biometric quality criteria.",
+        "bank_compliance_notes": "Complies with NIST SP 800-63B and ISO/IEC 19794-5 biometric capture standards. Suitable for baseline enrollment.",
+        "flagged_anomalies": [],
         "engine_used": "BIOMETRIC_REASONER_AIRGAPPED"
       },
-      "crops_count": 2,
+      "crops_count": 1,
       "face_crops": [
         {
           "box": [
@@ -317,15 +309,6 @@
             611
           ],
           "confidence": 0.669
-        },
-        {
-          "box": [
-            833,
-            445,
-            534,
-            560
-          ],
-          "confidence": 0.655
         }
       ]
     },
@@ -582,10 +565,10 @@
           "face_count": 0,
           "small_faces_count": 0
         },
-        "pad_decision": "FAIL",
-        "pad_attack_type": "DIGITAL_MANIPULATION",
-        "pad_spoof_prob": 0.964,
-        "pad_risk_score": 96,
+        "pad_decision": "REVIEW",
+        "pad_attack_type": "UNCERTAIN",
+        "pad_spoof_prob": 0.494,
+        "pad_risk_score": 49,
         "match_decision": null,
         "match_similarity": null,
         "match_threshold": null
@@ -646,10 +629,10 @@
           "face_count": 0,
           "small_faces_count": 0
         },
-        "pad_decision": "REVIEW",
-        "pad_attack_type": "UNCERTAIN",
-        "pad_spoof_prob": 0.387,
-        "pad_risk_score": 39,
+        "pad_decision": "PASS",
+        "pad_attack_type": "GENUINE",
+        "pad_spoof_prob": 0.25,
+        "pad_risk_score": 25,
         "match_decision": null,
         "match_similarity": null,
         "match_threshold": null
@@ -798,10 +781,10 @@
           "face_count": 1,
           "small_faces_count": 0
         },
-        "pad_decision": "PASS",
-        "pad_attack_type": "UNCERTAIN",
-        "pad_spoof_prob": 0.3,
-        "pad_risk_score": 30,
+        "pad_decision": "FAIL",
+        "pad_attack_type": "DIGITAL_MANIPULATION",
+        "pad_spoof_prob": 0.961,
+        "pad_risk_score": 96,
         "match_decision": null,
         "match_similarity": null,
         "match_threshold": null
@@ -809,9 +792,9 @@
       "explanation": {
         "verdict": "REJECT",
         "risk_level": "CRITICAL",
-        "risk_score": 85,
+        "risk_score": 96,
         "summary": "Presentation attack detected: image exhibits paper grain, halftone ink grid, or specular print reflections.",
-        "customer_guidance": "Please take a live selfie with your camera directly. Photos of printed pictures or paper documents are not permitted.",
+        "customer_guidance": "Please take a live selfie with your camera directly. Photos of printed pictures or paper documents are not permitted for bank account opening.",
         "bank_compliance_notes": "Adverse PAD finding per ISO/IEC 30107-3 Level 1 physical presentation attack detection.",
         "flagged_anomalies": [
           "PRINT_PAPER_ARTIFACT"
@@ -877,10 +860,10 @@
           "face_count": 1,
           "small_faces_count": 0
         },
-        "pad_decision": "REVIEW",
-        "pad_attack_type": "SCREEN_REPLAY",
-        "pad_spoof_prob": 0.55,
-        "pad_risk_score": 55,
+        "pad_decision": "FAIL",
+        "pad_attack_type": "DIGITAL_MANIPULATION",
+        "pad_spoof_prob": 0.907,
+        "pad_risk_score": 91,
         "match_decision": null,
         "match_similarity": null,
         "match_threshold": null
@@ -888,9 +871,9 @@
       "explanation": {
         "verdict": "REJECT",
         "risk_level": "CRITICAL",
-        "risk_score": 82,
+        "risk_score": 91,
         "summary": "Presentation attack detected: digital screen replay frequency grid (moir\u00e9 raster) or monitor bezel glare identified.",
-        "customer_guidance": "Please present your face live to the camera. Photos taken from computer monitors, tablets, or phone screens cannot be accepted.",
+        "customer_guidance": "Please present your face live to the camera. Photos taken from computer monitors, tablets, or phone screens cannot be accepted for bank account opening.",
         "bank_compliance_notes": "Adverse PAD finding per ISO/IEC 30107-3 Level 1 digital screen presentation attack detection.",
         "flagged_anomalies": [
           "SCREEN_MOIRE_REPLAY"
