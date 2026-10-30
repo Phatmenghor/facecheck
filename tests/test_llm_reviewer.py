@@ -324,6 +324,7 @@ def test_continuous_daemon_api_endpoints():
     assert "daemon_id" in status_data
     assert "status" in status_data
     assert "learning_stats" in status_data
+    assert "online_streamed_count" in status_data
 
     # Test trigger cycle
     trigger_resp = client.post(
@@ -334,6 +335,14 @@ def test_continuous_daemon_api_endpoints():
     trigger_data = trigger_resp.json()
     assert trigger_data["status"] == "SUCCESS"
     assert "heartbeat" in trigger_data
+
+    # Test online stream ingest endpoint
+    stream_resp = client.post(
+        "/api/v1/learning/stream-ingest?batch_size=1",
+        headers={"X-API-Key": VALID_API_KEY},
+    )
+    assert stream_resp.status_code == 200
+    assert stream_resp.json()["status"] == "SUCCESS"
 
 
 def test_auto_review_and_online_sync_endpoints():

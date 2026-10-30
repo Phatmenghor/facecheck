@@ -156,6 +156,8 @@ class DaemonStatusResponse(BaseModel):
     is_postgresql: bool
     iterations_count: int
     training_runs_count: int
+    online_streamed_count: int = 0
+    online_stream_enabled: bool = True
     interval_seconds: int
     learning_stats: LearningStats
 

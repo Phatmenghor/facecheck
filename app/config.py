@@ -42,6 +42,8 @@ class LLMConfig(BaseModel):
     auto_feedback_enabled: bool = True
     online_training_url: Optional[str] = None
     openai_fine_tuning_enabled: bool = True
+    online_stream_enabled: bool = True
+    online_stream_batch_size: int = 2
 
 
 class ServerConfig(BaseModel):
@@ -297,6 +299,10 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
         config.llm.openai_fine_tuning_enabled = os.environ["LLM_OPENAI_FINE_TUNING_ENABLED"].lower() in ("true", "1")
     if os.getenv("LLM_ONLINE_TRAINING_URL"):
         config.llm.online_training_url = os.environ["LLM_ONLINE_TRAINING_URL"]
+    if os.getenv("FACECHECK_ONLINE_STREAM_ENABLED"):
+        config.llm.online_stream_enabled = os.environ["FACECHECK_ONLINE_STREAM_ENABLED"].lower() in ("true", "1")
+    if os.getenv("FACECHECK_ONLINE_STREAM_BATCH_SIZE"):
+        config.llm.online_stream_batch_size = int(os.environ["FACECHECK_ONLINE_STREAM_BATCH_SIZE"])
 
     # Enforce offline variables
     if config.server.offline_mode:

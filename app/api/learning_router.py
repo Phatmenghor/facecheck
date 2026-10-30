@@ -183,9 +183,58 @@ def get_daemon_status_endpoint(
         is_postgresql=daemon.store.is_postgresql,
         iterations_count=daemon.iterations_count,
         training_runs_count=daemon.training_runs_count,
+        online_streamed_count=daemon.online_streamed_total,
+        online_stream_enabled=daemon.online_stream_enabled,
         interval_seconds=daemon.interval_sec,
         learning_stats=stats,
     )
+
+
+@router.post("/learning/stream-ingest")
+def trigger_online_stream_endpoint(
+    batch_size: int = 3,
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Stream face images dynamically from the internet in memory, validate, auto-review with AI, and record in PostgreSQL."""
+    daemon = get_continuous_daemon()
+    ingested = daemon.ingest_from_online_stream(batch_size=batch_size)
+    stats = daemon.store.get_learning_stats()
+    return {
+        "status": "SUCCESS",
+        "ingested_count": ingested,
+        "total_records": stats.total_records,
+        "total_images_in_db": len(daemon.store.list_stored_images()),
+    }
+
+
+@router.post("/learning/auto-train")
+def trigger_auto_train_endpoint(
+    stream_count: int = 5,
+    api_key_name: str = Depends(verify_api_key),
+    _: None = Depends(check_rate_limit),
+):
+    """Autonomous End-to-End Cycle: Ingest internet stream + AI auto-review + export fine-tune dataset + retrain model + online sync."""
+    daemon = get_continuous_daemon()
+    # 1. Stream from internet directly into PostgreSQL
+    ingested = daemon.ingest_from_online_stream(batch_size=stream_count)
+    # 2. Export fine-tuning dataset
+    exp_file = daemon.store.export_fine_tuning_dataset()
+    # 3. Retrain model
+    trained, metrics = daemon.trigger_model_training()
+    # 4. Trigger online sync
+    from app.services.llm_reviewer import get_llm_reviewer
+    sync_res = get_llm_reviewer().trigger_online_training_sync(exp_file)
+    stats = daemon.store.get_learning_stats()
+    return {
+        "status": "SUCCESS",
+        "streamed_and_reviewed": ingested,
+        "model_retrained": trained,
+        "training_metrics": metrics,
+        "fine_tune_dataset": str(exp_file),
+        "online_sync": sync_res,
+        "total_learning_records": stats.total_records,
+    }
 
 
 @router.post("/learning/daemon/trigger")
