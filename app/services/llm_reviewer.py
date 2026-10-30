@@ -105,10 +105,19 @@ class LLMReviewerService:
 
     def __init__(self, api_key: Optional[str] = None) -> None:
         self.config = get_config()
-        self.api_key = api_key or self.config.llm.api_key or os.getenv("GEMINI_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY")
-        self.provider = (self.config.llm.provider or os.getenv("LLM_PROVIDER", "gemini")).lower()
-        self.model = self.config.llm.model or os.getenv("LLM_MODEL", "gemini-1.5-flash")
-        self.base_url = self.config.llm.base_url or os.getenv("LLM_BASE_URL")
+        self.provider = (os.getenv("LLM_PROVIDER") or self.config.llm.provider or "gemini").lower()
+        self.base_url = os.getenv("LLM_BASE_URL") or self.config.llm.base_url
+        self.model = os.getenv("LLM_MODEL") or self.config.llm.model or "gemini-1.5-flash"
+
+        # Auto-configure defaults for local Ollama provider
+        if self.provider == "ollama":
+            if not self.base_url:
+                self.base_url = "http://localhost:11434/v1"
+            if not os.getenv("LLM_MODEL") and (not self.config.llm.model or self.model == "gemini-1.5-flash"):
+                self.model = "llama3.2"
+            self.api_key = api_key or self.config.llm.api_key or os.getenv("LLM_API_KEY") or "ollama"
+        else:
+            self.api_key = api_key or self.config.llm.api_key or os.getenv("GEMINI_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY")
 
     def review(
         self,
@@ -117,11 +126,11 @@ class LLMReviewerService:
     ) -> BiometricReviewExplanation:
         """Produce a comprehensive biometric review explanation.
 
-        Queries online AI model (Gemini/OpenAI) with multimodal vision support if configured,
+        Queries online AI model (Gemini/OpenAI/Ollama) with multimodal vision support if configured,
         enriched with RAG precedents from PostgreSQL.
         Falls back seamlessly to the deterministic biometric reasoner.
         """
-        if self.api_key:
+        if self.api_key or self.provider == "ollama":
             try:
                 explanation = self._query_online_llm(telemetry, image_bytes=image_bytes)
                 if explanation:
@@ -173,14 +182,14 @@ class LLMReviewerService:
             "Return only valid JSON."
         )
 
-        # Provider 1: OpenAI or OpenAI-compatible endpoint (Multimodal Vision if image_bytes provided)
-        if self.provider in ("openai", "custom_openai_compatible") or "gpt" in self.model.lower():
+        # Provider 1: OpenAI, OpenAI-compatible, or Ollama (Multimodal Vision if image_bytes provided)
+        if self.provider in ("openai", "custom_openai_compatible", "ollama") or "gpt" in self.model.lower():
             try:
                 import openai
                 client = openai.OpenAI(
-                    api_key=self.api_key,
-                    base_url=self.base_url or None,
-                    timeout=15.0,
+                    api_key=self.api_key or "ollama",
+                    base_url=self.base_url or ("http://localhost:11434/v1" if self.provider == "ollama" else None),
+                    timeout=20.0,
                 )
                 if image_bytes:
                     b64_img = base64.b64encode(image_bytes).decode("utf-8")
@@ -197,23 +206,41 @@ class LLMReviewerService:
                 else:
                     user_content = user_prompt
 
-                response = client.chat.completions.create(
-                    model=self.model or "gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": system_instruction},
-                        {"role": "user", "content": user_content},
-                    ],
-                    temperature=self.config.llm.temperature,
-                    response_format={"type": "json_object"},
-                )
+                default_m = "llama3.2" if self.provider == "ollama" else "gpt-4o-mini"
+                try:
+                    response = client.chat.completions.create(
+                        model=self.model or default_m,
+                        messages=[
+                            {"role": "system", "content": system_instruction},
+                            {"role": "user", "content": user_content},
+                        ],
+                        temperature=self.config.llm.temperature,
+                        response_format={"type": "json_object"},
+                    )
+                except Exception:
+                    # Fallback for models without strict response_format json_object support
+                    response = client.chat.completions.create(
+                        model=self.model or default_m,
+                        messages=[
+                            {"role": "system", "content": system_instruction},
+                            {"role": "user", "content": user_content},
+                        ],
+                        temperature=self.config.llm.temperature,
+                    )
+
                 raw_text = response.choices[0].message.content or "{}"
+                if "```json" in raw_text:
+                    raw_text = raw_text.split("```json")[1].split("```")[0].strip()
+                elif "```" in raw_text:
+                    raw_text = raw_text.split("```")[1].split("```")[0].strip()
+
                 parsed = json.loads(raw_text)
-                parsed["engine_used"] = "LLM_ONLINE_OPENAI"
-                parsed["ai_model_name"] = self.model
+                parsed["engine_used"] = "LLM_OLLAMA" if self.provider == "ollama" else "LLM_ONLINE_OPENAI"
+                parsed["ai_model_name"] = self.model or default_m
                 parsed["learning_examples_consulted"] = len(few_shots)
                 return BiometricReviewExplanation(**parsed)
             except Exception as e:
-                logger.debug("OpenAI API call failed: %s", e)
+                logger.debug("%s API call failed: %s", self.provider.upper(), e)
 
         # Provider 2: Google Gemini REST API (Multimodal Vision if image_bytes provided)
         try:

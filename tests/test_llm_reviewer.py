@@ -415,5 +415,21 @@ def test_check_endpoint_ai_message_and_feedback():
     assert data["ai_feedback"]["verdict"] in ("ACCEPT", "REJECT", "MANUAL_REVIEW")
 
 
+def test_ollama_provider_configuration(monkeypatch):
+    """Verify that setting provider to 'ollama' auto-configures localhost:11434 and llama3.2."""
+    monkeypatch.setenv("LLM_PROVIDER", "ollama")
+    monkeypatch.delenv("LLM_BASE_URL", raising=False)
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    from app.services.llm_reviewer import LLMReviewerService
+    service = LLMReviewerService()
+    assert service.provider == "ollama"
+    assert service.base_url == "http://localhost:11434/v1"
+    assert service.model == "llama3.2"
+    assert service.api_key == "ollama"
+
+
 
 
