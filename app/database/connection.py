@@ -20,6 +20,11 @@ class DatabaseConnectionManager:
 
     def get_connection(self) -> psycopg2.extensions.connection:
         """Create a fresh PostgreSQL connection using configured environment credentials."""
+        # Hard Security Guard: Block any external/remote database hosts (including legacy 192.168.103.106)
+        host = str(self.config.database.host or "").strip()
+        if host not in ("127.0.0.1", "localhost", "::1", "postgres"):
+            raise PermissionError(f"External database connection to '{host}' is strictly forbidden by policy. Only local database (127.0.0.1 / postgres container) is permitted.")
+
         return psycopg2.connect(
             host=self.config.database.host,
             port=self.config.database.port,

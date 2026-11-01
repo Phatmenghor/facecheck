@@ -16,7 +16,7 @@ from app.services.face_check import (
 )
 from app.services.pipeline import run_pipeline
 
-API_KEY = "fc-prod-secret-key-bank-core-9872"
+API_KEY = "fc-test-key-bank-core-dev-001"
 app = create_app()
 client = TestClient(app)
 

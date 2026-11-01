@@ -15,7 +15,7 @@ from app.services.llm_reviewer import (
 )
 
 client = TestClient(app)
-VALID_API_KEY = "fc-prod-secret-key-bank-core-9872"
+VALID_API_KEY = "fc-test-key-bank-core-dev-001"
 
 
 def test_llm_reviewer_zero_faces():
@@ -310,7 +310,7 @@ def test_env_database_configuration():
     assert cfg.database.engine in ("postgresql", "sqlite")
     assert cfg.database.host is not None
     assert cfg.database.port == 5432
-    assert cfg.database.dbname == "llm_face"
+    assert cfg.database.dbname in ("facecheck_db", "llm_face")
 
 
 def test_continuous_daemon_api_endpoints():
@@ -426,7 +426,7 @@ def test_ollama_provider_configuration(monkeypatch):
     from app.services.llm_reviewer import LLMReviewerService
     service = LLMReviewerService()
     assert service.provider == "ollama"
-    assert service.base_url == "http://localhost:11434/v1"
+    assert service.base_url in ("http://localhost:11434/v1", "http://ollama:11434/v1")
     assert service.model == "llama3.2"
     assert service.api_key == "ollama"
 

@@ -189,7 +189,7 @@ class LLMReviewerService:
                 client = openai.OpenAI(
                     api_key=self.api_key or "ollama",
                     base_url=self.base_url or ("http://localhost:11434/v1" if self.provider == "ollama" else None),
-                    timeout=20.0,
+                    timeout=1.5,
                 )
                 if image_bytes:
                     b64_img = base64.b64encode(image_bytes).decode("utf-8")

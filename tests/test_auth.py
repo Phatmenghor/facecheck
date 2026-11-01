@@ -9,13 +9,13 @@ from app.api.dependencies import verify_api_key, check_rate_limit, _rate_limit_r
 
 def test_verify_api_key_valid():
     # bank_core_service configured key
-    valid_key = "fc-prod-secret-key-bank-core-9872"
+    valid_key = "fc-test-key-bank-core-dev-001"
     key_name = verify_api_key(x_api_key=valid_key)
     assert key_name == "bank_core_service"
 
 
 def test_verify_api_key_query_param():
-    valid_key = "fc-prod-secret-key-bank-core-9872"
+    valid_key = "fc-test-key-bank-core-dev-001"
     key_name = verify_api_key(api_key=valid_key)
     assert key_name == "bank_core_service"
 

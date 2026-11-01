@@ -431,7 +431,7 @@ def generate_html_dashboard(items: List[Dict[str, Any]], match_demo: Dict[str, A
         <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-3">
           <div class="text-[10px] uppercase text-slate-500 font-semibold">Enterprise Database</div>
           <div id="db-engine-label" class="font-mono text-emerald-400 mt-1 font-bold truncate">PostgreSQL 15.6 (llm_face)</div>
-          <div id="db-host-label" class="text-[10px] text-slate-400 mt-0.5 truncate">192.168.103.106:5432</div>
+          <div id="db-host-label" class="text-[10px] text-slate-400 mt-0.5 truncate">127.0.0.1:5432</div>
         </div>
         <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-3">
           <div class="text-[10px] uppercase text-slate-500 font-semibold">Online AI Model & Provider</div>
@@ -1460,7 +1460,7 @@ def generate_html_dashboard(items: List[Dict[str, Any]], match_demo: Dict[str, A
           }
           const hostEl = document.getElementById('db-host-label');
           if (hostEl) {
-            hostEl.textContent = stats.database_file || '192.168.103.106:5432';
+            hostEl.textContent = stats.database_file || '127.0.0.1:5432';
           }
 
           // Update header counters from database stats

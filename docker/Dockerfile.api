@@ -1,0 +1,65 @@
+# ==============================================================================
+# FaceCheck Backend API - Multi-Stage Hardened Production Dockerfile
+# Base: python:3.11-slim-bookworm (Debian Stable Pinned)
+# Non-Root User: facecheck (UID 10001)
+# ==============================================================================
+
+# Stage 1: Build stage (Installs pre-built binary wheels)
+FROM python:3.11-slim-bookworm AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /build
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+
+# Stage 2: Hardened Runtime stage
+FROM python:3.11-slim-bookworm AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1 \
+    NO_PROXY="*"
+
+WORKDIR /app
+
+# Dedicated non-root user and group
+RUN groupadd -r -g 10001 facecheck && \
+    useradd -r -u 10001 -g facecheck -d /app -s /sbin/nologin facecheck
+
+# Copy installed dependencies from builder
+COPY --from=builder /install /usr/local
+
+# Copy application code, configuration, database schemas, and test assets
+COPY --chown=root:facecheck config.yaml /app/config.yaml
+COPY --chown=root:facecheck pytest.ini /app/pytest.ini
+COPY --chown=root:facecheck app/ /app/app/
+COPY --chown=root:facecheck models/ /app/models/
+COPY --chown=root:facecheck db/ /app/db/
+COPY --chown=root:facecheck scripts/ /app/scripts/
+COPY --chown=root:facecheck tests/ /app/tests/
+
+# Ensure /app and all contents are owned and readable by non-root facecheck
+RUN chown -R root:facecheck /app && \
+    chmod 755 /app && \
+    chmod -R 755 /app && \
+    chmod 644 /app/config.yaml /app/pytest.ini
+
+# Create restricted writable directories for runtime logs and storage
+RUN mkdir -p /app/logs /app/storage/encrypted_images /tmp && \
+    chown -R facecheck:facecheck /app/logs /app/storage /tmp && \
+    chmod 770 /app/logs /app/storage /app/storage/encrypted_images /tmp
+
+USER facecheck:facecheck
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')" || exit 1
+
+ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

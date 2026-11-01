@@ -3,7 +3,7 @@
 Usage:
     py scripts/run_continuous_daemon.py
 
-Reads configuration directly from .env (Database: PostgreSQL 192.168.103.106:5432/llm_face).
+Reads configuration directly from .env (Database: PostgreSQL 127.0.0.1:5432/facecheck_prod).
 Runs forever until Ctrl+C.
 """
 

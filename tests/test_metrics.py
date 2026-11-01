@@ -32,7 +32,7 @@ def test_metrics_collector_recording():
 def test_metrics_endpoint_authorized():
     client = TestClient(app)
     # Valid API key from config.yaml
-    headers = {"X-API-Key": "fc-prod-secret-key-bank-core-9872"}
+    headers = {"X-API-Key": "fc-test-key-bank-core-dev-001"}
     response = client.get("/api/v1/metrics", headers=headers)
     assert response.status_code == 200
     assert "text/plain" in response.headers["content-type"]

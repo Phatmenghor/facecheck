@@ -15,7 +15,7 @@ from app.anti_spoofing.challenge import get_challenge_manager
 from tests.fixtures_helper import get_fixture_image
 
 client = TestClient(app)
-VALID_API_KEY = "fc-prod-secret-key-bank-core-9872"
+VALID_API_KEY = "fc-test-key-bank-core-dev-001"
 
 
 def _load_fixture(name: str) -> Image.Image:

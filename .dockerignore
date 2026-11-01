@@ -1,0 +1,38 @@
+# Version Control & Local Environment
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Python Bytecode & Virtual Environments
+__pycache__
+*.py[cod]
+*$py.class
+.venv
+venv/
+ENV/
+env/
+.pytest_cache
+.coverage
+htmlcov/
+
+# Local Volumes & Sensitive Storage
+storage/encrypted_images/*
+!storage/encrypted_images/.gitkeep
+backups/
+*.sql.enc
+*.tar.gz
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Specific Files
+.DS_Store
+Thumbs.db

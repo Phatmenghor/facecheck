@@ -8,7 +8,7 @@ from PIL import Image
 from app.main import app
 
 client = TestClient(app)
-VALID_API_KEY = "fc-prod-secret-key-bank-core-9872"
+VALID_API_KEY = "fc-test-key-bank-core-dev-001"
 
 
 def create_image_file(fmt: str = "JPEG", size=(150, 150), has_face: bool = False):

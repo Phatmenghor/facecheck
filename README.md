@@ -8,6 +8,47 @@ The system outputs a deterministic compliance decision in `{ACCEPT, REVIEW, REJE
 
 ---
 
+## Local Quick Start (Docker in VS Code Terminal)
+
+**Prerequisite:** Docker Desktop with WSL2 backend. **No software required on host except Docker and VS Code.**
+
+### 1. Initialize & Start Complete Stack
+Open the VS Code terminal (`Ctrl + \``) and run:
+
+```powershell
+# In PowerShell terminal:
+.\scripts\setup.ps1
+
+# Or in Git Bash / WSL2 terminal:
+bash scripts/setup.sh
+# or: make setup
+```
+
+This single command automatically:
+- Generates high-entropy random secrets for all database roles and keys into `.env`
+- Builds multi-stage Docker images (`api`, `ml-worker`, `monitor-web`)
+- Starts PostgreSQL, Ollama, FastAPI, ML Worker, and Nginx Monitor Web
+- Executes all database migrations and applies role boundaries (`db/roles.sql` + `db/migrations/*.sql`)
+- Pulls local offline Ollama model
+
+### 2. Access Local Services
+- **Read-Only Monitoring Dashboard:** [http://127.0.0.1:8080](http://127.0.0.1:8080) (Strictly GET only)
+- **FastAPI Core Biometric Engine:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **Ollama Offline Local LLM:** [http://127.0.0.1:11434](http://127.0.0.1:11434)
+
+### 3. Run Test Suite Inside Docker
+From VS Code terminal:
+```powershell
+.\scripts\test.ps1
+# Or in Bash:
+bash scripts/test.sh
+```
+
+### 4. Operations Runbook
+See **[docs/RUNBOOK.md](docs/RUNBOOK.md)** for start/stop, encrypted backup/restore, secret rotation, and troubleshooting.
+
+---
+
 ## Hard Limitations of Photo-Only Biometrics
 
 > [!CAUTION]

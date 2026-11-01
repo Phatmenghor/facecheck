@@ -10,7 +10,7 @@ from app.main import app
 from tests.fixtures_helper import get_fixture_bytes
 
 client = TestClient(app)
-VALID_API_KEY = "fc-prod-secret-key-bank-core-9872"
+VALID_API_KEY = "fc-test-key-bank-core-dev-001"
 
 
 def _load_fixture_bytes(name: str) -> bytes:

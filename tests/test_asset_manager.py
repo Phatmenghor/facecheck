@@ -21,7 +21,7 @@ from app.asset_manager.manifest import build_manifest, MasterAssetManifest
 from app.asset_manager.manager import AssetManager
 
 client = TestClient(app)
-VALID_API_KEY = "fc-prod-secret-key-bank-core-9872"
+VALID_API_KEY = "fc-test-key-bank-core-dev-001"
 
 
 def test_calculate_sha256(tmp_path: Path):

@@ -1,0 +1,33 @@
+# ==============================================================================
+# FaceCheck Monitoring Web Dashboard - Hardened Nginx Production Dockerfile
+# Base: nginx:1.25.4-alpine (Pinned)
+# Non-Root Execution: nginx user (UID 101)
+# Strictly Read-Only (GET only proxy)
+# ==============================================================================
+
+FROM nginx:1.25.4-alpine
+
+# Remove default server config
+RUN rm -rf /etc/nginx/conf.d/* /etc/nginx/nginx.conf
+
+# Copy hardened nginx configuration
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+
+# Copy static review dashboard assets
+COPY reports/review/index.html /usr/share/nginx/html/index.html
+
+# Setup restricted permissions for non-root execution
+RUN touch /tmp/nginx.pid && \
+    chown -R nginx:nginx /etc/nginx /usr/share/nginx/html /tmp /var/cache/nginx /var/run && \
+    chmod -R 550 /etc/nginx /usr/share/nginx/html && \
+    chmod 440 /usr/share/nginx/html/index.html && \
+    chmod -R 770 /tmp /var/cache/nginx /var/run
+
+USER nginx
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=3s --retries=3 \
+  CMD wget -q -O - http://127.0.0.1:8080/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

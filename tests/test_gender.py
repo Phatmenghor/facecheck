@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from app.main import create_app
 from app.services.gender_detector import estimate_gender
 
-API_KEY = "fc-prod-secret-key-bank-core-9872"
+API_KEY = "fc-test-key-bank-core-dev-001"
 
 
 def test_estimate_gender_fallback_on_tiny_image():

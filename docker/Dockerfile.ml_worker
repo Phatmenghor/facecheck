@@ -1,0 +1,60 @@
+# ==============================================================================
+# FaceCheck ML Training Worker - Multi-Stage Hardened Production Dockerfile
+# Base: python:3.11-slim-bookworm (Debian Stable Pinned)
+# Non-Root User: mlworker (UID 10002)
+# ==============================================================================
+
+# Stage 1: Build stage (Installs pre-built binary wheels)
+FROM python:3.11-slim-bookworm AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /build
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+
+# Stage 2: Hardened Runtime stage
+FROM python:3.11-slim-bookworm AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1 \
+    NO_PROXY="*"
+
+WORKDIR /app
+
+# Dedicated non-root user and group
+RUN groupadd -r -g 10002 mlworker && \
+    useradd -r -u 10002 -g mlworker -d /app -s /sbin/nologin mlworker
+
+# Copy installed packages from builder
+COPY --from=builder /install /usr/local
+
+# Copy application code and scripts
+COPY --chown=root:mlworker config.yaml /app/config.yaml
+COPY --chown=root:mlworker app/ /app/app/
+COPY --chown=root:mlworker models/ /app/models/
+COPY --chown=root:mlworker scripts/ /app/scripts/
+
+# Ensure /app and all contents are owned and readable by non-root mlworker
+RUN chown -R root:mlworker /app && \
+    chmod 755 /app && \
+    chmod -R 755 /app && \
+    chmod 644 /app/config.yaml
+
+# Create restricted writable directories for worker logs, storage, and health heartbeat
+RUN mkdir -p /app/logs /app/storage /app/models/trained /tmp && \
+    chown -R mlworker:mlworker /app/logs /app/storage /app/models/trained /tmp && \
+    chmod 770 /app/logs /app/storage /app/models/trained /tmp
+
+USER mlworker:mlworker
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+  CMD python -c "import os, sys, time; p = '/tmp/worker_heartbeat'; sys.exit(0 if (os.path.exists(p) and (time.time() - os.path.getmtime(p)) < 120) else 1)" || exit 1
+
+ENTRYPOINT ["python", "scripts/run_continuous_daemon.py"]

@@ -1,7 +1,7 @@
 """Continuous Autonomous Training & Learning Daemon for FaceCheck.
 
 Runs continuously in the background to:
-1. Ingest newly reviewed auditor feedback from PostgreSQL (192.168.103.106:5432/llm_face).
+1. Ingest newly reviewed auditor feedback from PostgreSQL (127.0.0.1:5432/facecheck_prod).
 2. Autonomous AI Auto-Review: Inspects unreviewed images with computer vision + AI model and auto-logs verdicts into PostgreSQL.
 3. Continuously export updated instruction-tuning datasets (storage/llm_biometric_finetune.jsonl).
 4. Discover and catalog new biometric training images into kyc_dataset_manifest.
@@ -392,6 +392,10 @@ class ContinuousLearningDaemon:
 
         while self.running:
             try:
+                try:
+                    Path("/tmp/worker_heartbeat").touch()
+                except Exception:
+                    pass
                 res = self.run_single_iteration()
                 logger.info(
                     "[Daemon Heartbeat] Iteration %d complete (Records: %d, Auto-Reviewed: %d, Trained: %s). Sleeping %ds...",

@@ -8,9 +8,9 @@ server:
 security:
   api_keys:
     - name: "bank_core_service"
-      key: "fc-prod-secret-key-bank-core-9872"
+      key: "fc-test-key-bank-core-dev-001"
     - name: "ad_verification_service"
-      key: "fc-prod-secret-key-ad-verify-5431"
+      key: "fc-test-key-ad-verify-dev-002"
   rate_limit_per_minute: 120
 
 storage:
